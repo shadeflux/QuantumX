@@ -17,11 +17,11 @@ local Window = Rayfield:CreateWindow({
     KeySystem = false
 })
 
--- Key system (jedna karta na początku)
-local KeyTab = Window:CreateTab("Key System", nil)
+-- Key system (jedna karta)
+local KeyTab = Window:CreateTab("Key System")
 
 KeyTab:CreateLabel("Klucz ważny 24h – przejdź checkpointy jak w Delta!")
-KeyTab:CreateLabel("Po ukończeniu kroków strona auto wygeneruje klucz – skopiuj i wklej poniżej.")
+KeyTab:CreateLabel("Po ukończeniu wszystkich kroków skopiuj klucz i wklej poniżej.")
 
 local KeyStatus = KeyTab:CreateLabel("Status: Oczekiwanie na klucz...")
 
@@ -33,9 +33,8 @@ local function CheckKey(Token)
     
     if Success and Response:find('"valid":true') then
         return true
-    else
-        return false
     end
+    return false
 end
 
 local SavedKey = nil
@@ -47,70 +46,61 @@ pcall(function()
     end
 end)
 
-local KeyValid = false
-if SavedKey then
-    KeyValid = CheckKey(SavedKey)
-end
+local KeyValid = SavedKey and CheckKey(SavedKey)
 
 if KeyValid then
     KeyStatus:Set("Status: Klucz ważny – hub odblokowany")
-    task.delay(1, function()
+    task.delay(0.8, function()
         KeyTab.Container.Visible = false
     end)
 else
     if SavedKey then
         pcall(function() delfile(KeyFile) end)
     end
-    
+
     KeyTab:CreateButton({
-        Name = "Otwórz checkpointy (Get Key)",
+        Name = "Otwórz stronę z kluczami",
         Callback = function()
             setclipboard("https://work.ink/2dRx/key-system")
             Rayfield:Notify({
                 Title = "Skopiowano!",
-                Content = "Wklej w przeglądarkę i ukończ WSZYSTKIE kroki.\nPo zakończeniu skopiuj klucz i wklej tutaj.",
-                Duration = 15
+                Content = "Ukończ WSZYSTKIE kroki i wklej klucz tutaj.",
+                Duration = 12
             })
         end
     })
 
     KeyTab:CreateInput({
-        Name = "Wklej klucz/token tutaj",
+        Name = "Wklej klucz tutaj",
         PlaceholderText = "np. abc123-def456-ghi789",
         RemoveTextAfterFocusLost = false,
         Callback = function(Token)
-            if Token == "" then
-                Rayfield:Notify({Title = "Błąd", Content = "Wklej klucz!", Duration = 5})
-                return
-            end
-            
+            if Token == "" then return end
+
             if CheckKey(Token) then
                 Rayfield:Notify({
-                    Title = "Sukces!",
-                    Content = "Klucz poprawny! Zapisuję i odblokowuję hub...",
-                    Duration = 6
+                    Title = "Sukces",
+                    Content = "Klucz zaakceptowany!",
+                    Duration = 5
                 })
-                
-                pcall(function()
-                    writefile(KeyFile, Token)
-                end)
-                
+                pcall(function() writefile(KeyFile, Token) end)
+
                 KeyStatus:Set("Status: Klucz ważny – hub odblokowany")
-                task.delay(1, function()
+                task.delay(0.8, function()
                     KeyTab.Container.Visible = false
                 end)
             else
                 Rayfield:Notify({
                     Title = "Błąd",
-                    Content = "Nieprawidłowy lub expired klucz! Spróbuj ponownie.",
-                    Duration = 8
+                    Content = "Nieprawidłowy lub wygasły klucz",
+                    Duration = 6
                 })
             end
         end
     })
 end
 
--- Główna zawartość huba (bez AimbotTab i bez Fly/Float)
+-- Główny hub – reszta Twojego kodu
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -123,7 +113,7 @@ local ScriptsTab = Window:CreateTab("Scripts", "code")
 local CreditsTab = Window:CreateTab("Credits", "info")
 local SettingsTab = Window:CreateTab("Settings", "settings")
 
--- Zmienne (pozostałe po usunięciu fly/float)
+-- Zmienne
 local speedEnabled = false
 local defaultSpeed = 16
 local customSpeed = 32
@@ -149,7 +139,7 @@ local function getPlayerFromName(name)
     return nil
 end
 
--- PLAYER MODS (bez fly i float)
+-- PLAYER MODS
 
 PlayerTab:CreateSlider({
     Name = "Walk Speed",
