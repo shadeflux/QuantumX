@@ -9,15 +9,11 @@ local Window = Rayfield:CreateWindow({
         FolderName = "QuantumX",
         FileName = "Config"
     },
-    Discord = {
-        Enabled = false,
-        Invite = "",
-        RememberJoins = true
-    },
+    Discord = { Enabled = false },
     KeySystem = false
 })
 
--- Key system jako karta na początku
+-- Karta Key System na samym początku
 local KeyTab = Window:CreateTab("Key System")
 
 KeyTab:CreateLabel("Klucz ważny 24h – przejdź checkpointy jak w Delta!")
@@ -26,22 +22,17 @@ KeyTab:CreateLabel("Po ukończeniu kroków skopiuj klucz i wklej poniżej.")
 local KeyStatus = KeyTab:CreateLabel("Status: Oczekiwanie na klucz...")
 
 local function CheckKey(Token)
-    local Url = "https://work.ink/_api/v2/token/isValid/" .. Token
     local Success, Response = pcall(function()
-        return game:HttpGet(Url)
+        return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token)
     end)
-    
-    if Success and Response:find('"valid":true') then
-        return true
-    end
-    return false
+    return Success and Response and Response:find('"valid":true')
 end
 
 local SavedKey = nil
 local KeyFile = "QuantumX_Key.txt"
 
 pcall(function()
-    if isfile and isfile(KeyFile) then
+    if isfile(KeyFile) then
         SavedKey = readfile(KeyFile)
     end
 end)
@@ -57,18 +48,14 @@ if KeyValid then
     end)
 else
     if SavedKey then
-        pcall(function() delfile(KeyFile) end)
+        pcall(delfile, KeyFile)
     end
 
     KeyTab:CreateButton({
         Name = "Otwórz stronę z kluczami",
         Callback = function()
             setclipboard("https://work.ink/2dRx/key-system")
-            Rayfield:Notify({
-                Title = "Skopiowano!",
-                Content = "Ukończ WSZYSTKIE kroki i wklej klucz tutaj.",
-                Duration = 12
-            })
+            Rayfield:Notify({Title = "Skopiowano!", Content = "Ukończ WSZYSTKIE kroki i wklej klucz.", Duration = 10})
         end
     })
 
@@ -80,12 +67,8 @@ else
             if Token == "" then return end
 
             if CheckKey(Token) then
-                Rayfield:Notify({
-                    Title = "Sukces",
-                    Content = "Klucz zaakceptowany!",
-                    Duration = 5
-                })
-                pcall(function() writefile(KeyFile, Token) end)
+                Rayfield:Notify({Title = "Sukces", Content = "Klucz zaakceptowany!", Duration = 5})
+                pcall(writefile, KeyFile, Token)
 
                 KeyStatus:Set("Status: Klucz ważny – hub odblokowany")
                 task.delay(0.8, function()
@@ -94,17 +77,13 @@ else
                     end
                 end)
             else
-                Rayfield:Notify({
-                    Title = "Błąd",
-                    Content = "Nieprawidłowy lub wygasły klucz",
-                    Duration = 6
-                })
+                Rayfield:Notify({Title = "Błąd", Content = "Nieprawidłowy klucz", Duration = 5})
             end
         end
     })
 end
 
--- Główny hub – wszystkie funkcje oprócz aimbota i fly/float
+-- HUB – WSZYSTKIE FUNKCJE (bez aimbota i fly/float)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -135,9 +114,9 @@ local function getRoot(char)
 end
 
 local function getPlayerFromName(name)
-    for _, player in pairs(Players:GetPlayers()) do
-        if player.Name:lower():match("^" .. name:lower()) or player.DisplayName:lower():match("^" .. name:lower()) then
-            return player
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Name:lower():find(name:lower()) or p.DisplayName:lower():find(name:lower()) then
+            return p
         end
     end
     return nil
@@ -151,11 +130,10 @@ PlayerTab:CreateSlider({
     Increment = 1,
     Suffix = " Speed",
     CurrentValue = 16,
-    Flag = "WalkSpeedSlider",
-    Callback = function(value)
-        customSpeed = value
+    Callback = function(v)
+        customSpeed = v
         if speedEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = value
+            LocalPlayer.Character.Humanoid.WalkSpeed = v
         end
     end
 })
@@ -163,13 +141,10 @@ PlayerTab:CreateSlider({
 PlayerTab:CreateToggle({
     Name = "Enable Speed Hack",
     CurrentValue = false,
-    Flag = "SpeedHackToggle",
-    Callback = function(value)
-        speedEnabled = value
-        local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-        local humanoid = character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = value and customSpeed or defaultSpeed
+    Callback = function(v)
+        speedEnabled = v
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = v and customSpeed or defaultSpeed
         end
     end
 })
@@ -177,9 +152,8 @@ PlayerTab:CreateToggle({
 PlayerTab:CreateToggle({
     Name = "Infinite Jump",
     CurrentValue = false,
-    Flag = "InfiniteJumpToggle",
-    Callback = function(value)
-        infiniteJumpEnabled = value
+    Callback = function(v)
+        infiniteJumpEnabled = v
     end
 })
 
@@ -192,24 +166,19 @@ end)
 PlayerTab:CreateToggle({
     Name = "NoClip",
     CurrentValue = false,
-    Flag = "NoClipToggle",
-    Callback = function(value)
-        noclipEnabled = value
-        while noclipEnabled and task.wait(0.1) do
-            if LocalPlayer.Character then
-                for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        part.CanCollide = false
+    Callback = function(v)
+        noclipEnabled = v
+        if v then
+            spawn(function()
+                while noclipEnabled do
+                    if LocalPlayer.Character then
+                        for _, p in pairs(LocalPlayer.Character:GetDescendants()) do
+                            if p:IsA("BasePart") then p.CanCollide = false end
+                        end
                     end
+                    task.wait(0.1)
                 end
-            end
-        end
-        if LocalPlayer.Character then
-            for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = true
-                end
-            end
+            end)
         end
     end
 })
@@ -217,11 +186,10 @@ PlayerTab:CreateToggle({
 PlayerTab:CreateInput({
     Name = "Teleport do gracza",
     PlaceholderText = "Nick gracza",
-    RemoveTextAfterFocusLost = false,
     Callback = function(text)
         local target = getPlayerFromName(text)
         if target and target.Character and getRoot(target.Character) then
-            getRoot(LocalPlayer.Character).CFrame = getRoot(target.Character).CFrame
+            getRoot(LocalPlayer.Character).CFrame = getRoot(target.Character).CFrame + Vector3.new(0, 3, 0)
         else
             Rayfield:Notify({Title = "Błąd", Content = "Gracz nie znaleziony", Duration = 4})
         end
@@ -231,31 +199,22 @@ PlayerTab:CreateInput({
 PlayerTab:CreateToggle({
     Name = "Fling",
     CurrentValue = false,
-    Callback = function(value)
-        if value then
-            flinging = true
+    Callback = function(v)
+        flinging = v
+        if v then
             local char = LocalPlayer.Character
-            for _, v in pairs(char:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                    v.Massless = true
+            if not char then return end
+            for _, p in pairs(char:GetDescendants()) do
+                if p:IsA("BasePart") then
+                    p.CanCollide = false
+                    p.Massless = true
                 end
             end
-            local bv = Instance.new("BodyAngularVelocity")
-            bv.AngularVelocity = Vector3.new(0,99999,0)
-            bv.MaxTorque = Vector3.new(0,math.huge,0)
-            bv.Parent = getRoot(char)
-            spawn(function()
-                while flinging do
-                    bv.AngularVelocity = Vector3.new(0,99999,0)
-                    task.wait(0.2)
-                    bv.AngularVelocity = Vector3.new(0,0,0)
-                    task.wait(0.1)
-                end
-                bv:Destroy()
-            end)
-        else
-            flinging = false
+            local root = getRoot(char)
+            local ang = Instance.new("BodyAngularVelocity")
+            ang.AngularVelocity = Vector3.new(0, 999999, 0)
+            ang.MaxTorque = Vector3.new(0, math.huge, 0)
+            ang.Parent = root
         end
     end
 })
@@ -263,13 +222,13 @@ PlayerTab:CreateToggle({
 PlayerTab:CreateToggle({
     Name = "Anti Fling",
     CurrentValue = false,
-    Callback = function(value)
-        if value then
+    Callback = function(v)
+        if v then
             antifling = RunService.Stepped:Connect(function()
-                for _, p in pairs(Players:GetPlayers()) do
+                for _, p in Players:GetPlayers() do
                     if p \~= LocalPlayer and p.Character then
-                        for _, v in pairs(p.Character:GetDescendants()) do
-                            if v:IsA("BasePart") then v.CanCollide = false end
+                        for _, part in pairs(p.Character:GetDescendants()) do
+                            if part:IsA("BasePart") then part.CanCollide = false end
                         end
                     end
                 end
@@ -294,8 +253,8 @@ PlayerTab:CreateInput({
     PlaceholderText = "Nick gracza",
     Callback = function(text)
         local target = getPlayerFromName(text)
-        if target and target.Character and target.Character:FindFirstChildOfClass("Humanoid") then
-            Workspace.CurrentCamera.CameraSubject = target.Character:FindFirstChildOfClass("Humanoid")
+        if target and target.Character and target.Character:FindFirstChild("Humanoid") then
+            Workspace.CurrentCamera.CameraSubject = target.Character.Humanoid
             spectating = true
         else
             Rayfield:Notify({Title = "Błąd", Content = "Gracz nie znaleziony", Duration = 4})
@@ -307,7 +266,7 @@ PlayerTab:CreateButton({
     Name = "Zakończ obserwację",
     Callback = function()
         if spectating then
-            Workspace.CurrentCamera.CameraSubject = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            Workspace.CurrentCamera.CameraSubject = LocalPlayer.Character.Humanoid
             spectating = false
         end
     end
@@ -316,12 +275,15 @@ PlayerTab:CreateButton({
 PlayerTab:CreateToggle({
     Name = "Anti AFK",
     CurrentValue = false,
-    Callback = function(value)
-        if value then
-            LocalPlayer.Idled:Connect(function()
-                game:GetService("VirtualUser"):Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
-                task.wait(1)
-                game:GetService("VirtualUser"):Button2Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
+    Callback = function(v)
+        if v then
+            spawn(function()
+                while v do
+                    game:GetService("VirtualUser"):Button2Down(Vector2.new(), Workspace.CurrentCamera.CFrame)
+                    task.wait(1)
+                    game:GetService("VirtualUser"):Button2Up(Vector2.new(), Workspace.CurrentCamera.CFrame)
+                    task.wait(60)
+                end
             end)
         end
     end
@@ -365,5 +327,4 @@ SettingsTab:CreateButton({
     end
 })
 
--- Ładowanie konfiguracji (poprawnie)
 Rayfield:LoadConfiguration()
