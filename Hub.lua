@@ -39,7 +39,7 @@ if KeyValid then
         Content = "Auto-login udany – ładuję hub...",
         Duration = 4.5
     })
-    KeyWindow:Destroy()
+    Rayfield:Destroy()
     LoadMainHub()
 else
     if SavedKey then
@@ -84,7 +84,7 @@ else
                     if writefile then writefile(KeyFile, Token) end
                 end)
                 
-                KeyWindow:Destroy()
+                Rayfield:Destroy()
                 LoadMainHub()
             else
                 Rayfield:Notify({
