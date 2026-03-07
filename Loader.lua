@@ -1,4 +1,5 @@
--- Quantum X Loader
+-- Quantum X Loader | Unseen. Unpatched. Unstoppable.
+
 if getgenv().QuantumXLoaded then return end
 getgenv().QuantumXLoaded = true
 
