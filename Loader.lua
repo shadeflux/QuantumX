@@ -11,7 +11,7 @@ if not game:IsLoaded() then
     game.Loaded:Wait() 
 end
 
-local url = "https://raw.githubusercontent.com/TWOJ_NICK/QuantumX/main/Hub.lua"  -- ZMIEŃ NA SWÓJ
+local url = "https://raw.githubusercontent.com/shadeflux/QuantumX/main/Hub.lua"  -- ZMIEŃ NA SWÓJ
 
 local success, code = pcall(function()
     return game:HttpGet(url, true)
