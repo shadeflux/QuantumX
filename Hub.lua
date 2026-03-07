@@ -1,75 +1,67 @@
--- Quantum X – RESPONSIVE NATYWNE UI (dobre na telefon i PC)
+-- Quantum X – RESPONSIVE + CZARNE UI + MINIMIZE + CLOSE
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- Tworzymy ScreenGui
+-- ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "QuantumXGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
--- Główny Frame – responsywny rozmiar
+-- Główny Frame – responsywny
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
-MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
+MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+MainFrame.BackgroundTransparency = 0.3  -- 70% widoczności (30% przezroczystości)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
--- Automatyczne skalowanie do ekranu (80% szerokości max, min 300px)
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 16)
+UICorner.Parent = MainFrame
+
+-- Automatyczne skalowanie do ekranu
 local function UpdateSize()
     local screenSize = workspace.CurrentCamera.ViewportSize
-    local width = math.clamp(screenSize.X * 0.8, 320, 600)
-    local height = math.clamp(screenSize.Y * 0.7, 400, 700)
+    local width = math.clamp(screenSize.X * 0.85, 320, 600)   -- max 85% ekranu, min 320px
+    local height = math.clamp(screenSize.Y * 0.75, 380, 700) -- max 75% wysokości
     MainFrame.Size = UDim2.new(0, width, 0, height)
 end
 
 UpdateSize()
 workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateSize)
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 16)
-UICorner.Parent = MainFrame
-
--- Gradient tła
+-- Gradient tła (delikatny, czarny → ciemny fiolet)
 local UIGradient = Instance.new("UIGradient")
 UIGradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 30)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 0, 80))
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 0)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(20, 0, 40))
 }
 UIGradient.Rotation = 45
+UIGradient.Transparency = NumberSequence.new{
+    NumberSequenceKeypoint.new(0, 0.3),
+    NumberSequenceKeypoint.new(1, 0.3)
+}
 UIGradient.Parent = MainFrame
 
--- Neon glow
-local Glow = Instance.new("ImageLabel")
-Glow.Size = UDim2.new(1, 50, 1, 50)
-Glow.Position = UDim2.new(0, -25, 0, -25)
-Glow.BackgroundTransparency = 1
-Glow.Image = "rbxassetid://6014261993"
-Glow.ImageColor3 = Color3.fromRGB(0, 180, 255)
-Glow.ImageTransparency = 0.7
-Glow.ScaleType = Enum.ScaleType.Slice
-Glow.SliceCenter = Rect.new(49,49,450,450)
-Glow.Parent = MainFrame
-
--- Tytuł
+-- Tytuł – biały
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 60)
 Title.BackgroundTransparency = 1
 Title.Text = "Quantum X"
-Title.TextColor3 = Color3.fromRGB(0, 200, 255)
-Title.TextSize = 34
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 32
 Title.Font = Enum.Font.GothamBlack
-Title.TextStrokeTransparency = 0.7
 Title.Parent = MainFrame
 
--- Przyciski X i -
+-- Przyciski X i –
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 40)
 TopBar.BackgroundTransparency = 1
@@ -111,7 +103,7 @@ local UICornerMin = Instance.new("UICorner")
 UICornerMin.CornerRadius = UDim.new(1, 0)
 UICornerMin.Parent = MinimizeIcon
 
--- ==================== KEY SYSTEM ====================
+-- Key System – karta
 local KeyContainer = Instance.new("Frame")
 KeyContainer.Size = UDim2.new(1, 0, 1, -60)
 KeyContainer.Position = UDim2.new(0, 0, 0, 60)
@@ -122,7 +114,7 @@ local KeyLabel = Instance.new("TextLabel")
 KeyLabel.Size = UDim2.new(1, 0, 0, 40)
 KeyLabel.BackgroundTransparency = 1
 KeyLabel.Text = "Wklej klucz poniżej (ważny 24h)"
-KeyLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+KeyLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 KeyLabel.TextSize = 22
 KeyLabel.Font = Enum.Font.GothamSemibold
 KeyLabel.Parent = KeyContainer
@@ -160,11 +152,11 @@ Status.Size = UDim2.new(1, 0, 0, 40)
 Status.Position = UDim2.new(0, 0, 0.6, 0)
 Status.BackgroundTransparency = 1
 Status.Text = "Status: Oczekiwanie..."
-Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+Status.TextColor3 = Color3.fromRGB(255, 255, 255)
 Status.TextSize = 18
 Status.Parent = KeyContainer
 
--- Key check + logika (bez zmian)
+-- ==================== LOGIKA KLUCZA ====================
 local function CheckKey(Token)
     local Success, Response = pcall(function()
         return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token)
@@ -189,7 +181,6 @@ Submit.MouseButton1Click:Connect(function()
         task.delay(1, function()
             KeyContainer.Visible = false
 
-            -- Pokazujemy hub (dodaj tu funkcje)
             local HubLabel = Instance.new("TextLabel")
             HubLabel.Size = UDim2.new(1, 0, 1, 0)
             HubLabel.BackgroundTransparency = 1
@@ -199,7 +190,7 @@ Submit.MouseButton1Click:Connect(function()
             HubLabel.Font = Enum.Font.GothamBlack
             HubLabel.Parent = MainFrame
 
-            -- Przykład funkcji (dodaj resztę)
+            -- Dodaj tu funkcje – przykład speed
             local SpeedButton = Instance.new("TextButton")
             SpeedButton.Size = UDim2.new(0.8, 0, 0, 60)
             SpeedButton.Position = UDim2.new(0.1, 0, 0.3, 0)
@@ -219,6 +210,8 @@ Submit.MouseButton1Click:Connect(function()
                     Status.Text = "Speed włączony!"
                 end
             end)
+
+            -- Dodaj resztę funkcji tutaj w ten sam sposób
         end)
     else
         Status.Text = "Nieprawidłowy klucz"
@@ -252,8 +245,24 @@ if SavedKey and CheckKey(SavedKey) then
         HubLabel.Font = Enum.Font.GothamBlack
         HubLabel.Parent = MainFrame
 
-        -- Dodaj tu funkcje jak wyżej
+        -- Dodaj funkcje jak wyżej
     end)
 end
 
-print("Quantum X – responsywne UI załadowane")
+-- ==================== MINIMIZE I CLOSE ====================
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MinimizeIcon.Visible = true
+end)
+
+MinimizeIcon.MouseButton1Click:Connect(function()
+    MainFrame.Visible = true
+    MinimizeIcon.Visible = false
+end)
+
+print("Quantum X – responsywne, czarne UI załadowane")
