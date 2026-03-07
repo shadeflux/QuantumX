@@ -1,1 +1,1 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/main/Hub.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/main/HubTest.lua"))()
