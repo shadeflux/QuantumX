@@ -1,21 +1,13 @@
--- Quantum X – TESTOWA WERSJA (tylko key system + puste okno)
-
-local Library = loadstring(game:HttpGet('https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLibV2/main/Library.lua'))()
-local Window = Library:CreateWindow("Quantum X", "Unseen. Unpatched. Unstoppable.")
-
--- Tylko karta Key System – nic więcej
-local KeyTab = Window:AddTab("Key System")
-
-KeyTab:AddLabel("Klucz ważny 24h – przejdź checkpointy jak w Delta!")
-KeyTab:AddLabel("Po ukończeniu kroków skopiuj klucz i wklej poniżej.")
-
-local KeyStatus = KeyTab:AddLabel("Status: Oczekiwanie na klucz...")
+print("Quantum X – TEST MINIMALNY (bez GUI, tylko konsola)")
 
 local function CheckKey(Token)
     local Success, Response = pcall(function()
         return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token)
     end)
-    return Success and Response and Response:find('"valid":true')
+    if Success and Response and Response:find('"valid":true') then
+        return true
+    end
+    return false
 end
 
 local SavedKey = nil
@@ -30,41 +22,19 @@ end)
 local KeyValid = SavedKey and CheckKey(SavedKey)
 
 if KeyValid then
-    KeyStatus.Text = "Status: Klucz ważny – test udany!"
-    task.delay(1.5, function()
-        KeyTab:Hide()
-        Library:Notify("Test przeszedł! GUI się otworzyło i key działa.", 8)
-    end)
-else
-    if SavedKey then
-        pcall(delfile, KeyFile)
+    print("KLUCZ WAŻNY – TEST PRZESZEDŁ")
+    -- Tu możesz wkleić proste testowe funkcje, np.:
+    print("Test speed hack: WalkSpeed = 100")
+    if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = 100
     end
-
-    KeyTab:AddButton("Otwórz stronę z kluczami", function()
-        setclipboard("https://work.ink/2dRx/key-system")
-        Library:Notify("Skopiowano link! Ukończ kroki i wklej klucz.", 10)
-    end)
-
-    KeyTab:AddInput("Wklej klucz tutaj", {
-        Placeholder = "np. abc123-def456-ghi789",
-        ClearTextOnFocus = false,
-        Callback = function(Token)
-            if Token == "" then return end
-
-            if CheckKey(Token) then
-                Library:Notify("Sukces! Klucz zaakceptowany.", 5)
-                pcall(writefile, KeyFile, Token)
-                KeyStatus.Text = "Status: Klucz ważny – test udany!"
-                task.delay(1.5, function()
-                    KeyTab:Hide()
-                    Library:Notify("Test przeszedł! GUI się otworzyło i key działa.", 8)
-                end)
-            else
-                Library:Notify("Błąd – nieprawidłowy klucz", 6)
-            end
-        end
-    })
+    print("Test infinite jump włączony")
+    -- itd.
+else
+    print("BRAK WAŻNEGO KLUCZA")
+    print("Wklej w konsoli Delta i uruchom skrypt ponownie:")
+    print("getgenv().QuantumKey = \"twój_klucz\"")
+    print("Link do klucza: https://work.ink/2dRx/key-system")
 end
 
--- Zero funkcji – tylko to okno testowe
-Library:Notify("Quantum X TEST – jeśli widzisz to okno, to działa!", 10)
+print("Koniec testu – jeśli widzisz ten komunikat, HttpGet działa")
