@@ -1,31 +1,29 @@
--- Quantum X Loader – wersja bez błędów nil
-print("Quantum X Loader start...")
+-- Quantum X Loader - debug + fallback 2026
+print("[Quantum X] Loader start...")
 
-if getgenv().QuantumXLoaded then 
-    print("Już załadowany – wychodzę")
-    return 
+if getgenv().QuantumXLoaded then
+    print("[Quantum X] Już załadowany – wychodzę")
+    return
 end
 getgenv().QuantumXLoaded = true
 
-if not game:IsLoaded() then 
-    game.Loaded:Wait() 
-end
+if not game:IsLoaded() then game.Loaded:Wait() end
 
-local url = "https://raw.githubusercontent.com/shadeflux/QuantumX/main/Hub.lua"  -- ZMIEŃ NA SWÓJ
+local hubUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/main/Hub.lua"
 
-local success, code = pcall(function()
-    return game:HttpGet(url, true)
+print("[Quantum X] Próbuję pobrać: " .. hubUrl)
+
+local success, result = pcall(function()
+    return game:HttpGet(hubUrl, true)
 end)
 
-if success and code and code \~= "" then
-    print("Pobrano Hub.lua – ładuję...")
-    loadstring(code)()
-else
-    warn("Błąd pobierania Hub.lua!")
-    warn("URL: " .. url)
-    if not success then
-        warn("HttpGet failed: " .. tostring(code))  -- tu będzie dokładny błąd
+if success then
+    if result and #result > 100 then
+        print("[Quantum X] Hub pobrany (" .. #result .. " znaków) – wykonuję...")
+        loadstring(result)()
     else
-        warn("Kod pusty lub nil")
+        warn("[Quantum X] Pobrano pusty/za krótki kod – HttpGet zwróciło: " .. tostring(result))
     end
+else
+    warn("[Quantum X] HttpGet całkowicie padł: " .. tostring(result))
 end
