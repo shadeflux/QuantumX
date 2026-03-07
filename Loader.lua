@@ -1,3 +1,12 @@
+-- Bypass Delta heartbeat crash
+getgenv().HttpService = game:GetService("HttpService")
+getgenv().HttpService.RequestAsync = function(self, req)
+    if req.Url:find("apis.roblox.com/user-heartbeats-api") then
+        return { Success = true, StatusCode = 200, Body = "{}" }
+    end
+    return oldRequest(self, req)
+end
+local oldRequest = getgenv().HttpService.RequestAsync
 -- Quantum X Loader - debug + fallback 2026
 print("[Quantum X] Loader start...")
 
