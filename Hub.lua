@@ -1,31 +1,43 @@
--- Quantum X – ŁADNE NATYWNE UI (Aether / Rayfield style) + Draggable + Minimize + Close
+-- Quantum X – RESPONSIVE NATYWNE UI (dobre na telefon i PC)
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
--- ==================== TWORZENIE GUI ====================
+-- Tworzymy ScreenGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "QuantumXGui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
+-- Główny Frame – responsywny rozmiar
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 520, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -260, 0.5, -210)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(12, 12, 18)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true  -- przeciągalne
+MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
+
+-- Automatyczne skalowanie do ekranu (80% szerokości max, min 300px)
+local function UpdateSize()
+    local screenSize = workspace.CurrentCamera.ViewportSize
+    local width = math.clamp(screenSize.X * 0.8, 320, 600)
+    local height = math.clamp(screenSize.Y * 0.7, 400, 700)
+    MainFrame.Size = UDim2.new(0, width, 0, height)
+end
+
+UpdateSize()
+workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(UpdateSize)
 
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 16)
 UICorner.Parent = MainFrame
 
--- Gradient tła (jak w Aether)
+-- Gradient tła
 local UIGradient = Instance.new("UIGradient")
 UIGradient.Color = ColorSequence.new{
     ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 0, 30)),
@@ -57,7 +69,7 @@ Title.Font = Enum.Font.GothamBlack
 Title.TextStrokeTransparency = 0.7
 Title.Parent = MainFrame
 
--- Przyciski w prawym górnym rogu (X i -)
+-- Przyciski X i -
 local TopBar = Instance.new("Frame")
 TopBar.Size = UDim2.new(1, 0, 0, 40)
 TopBar.BackgroundTransparency = 1
@@ -83,7 +95,7 @@ MinimizeButton.TextSize = 24
 MinimizeButton.Font = Enum.Font.GothamBold
 MinimizeButton.Parent = TopBar
 
--- Mały przycisk po minimize (QX)
+-- Mały przycisk po minimize
 local MinimizeIcon = Instance.new("TextButton")
 MinimizeIcon.Size = UDim2.new(0, 50, 0, 50)
 MinimizeIcon.Position = UDim2.new(0, 20, 1, -70)
@@ -100,36 +112,148 @@ UICornerMin.CornerRadius = UDim.new(1, 0)
 UICornerMin.Parent = MinimizeIcon
 
 -- ==================== KEY SYSTEM ====================
-local KeyTab = Instance.new("Frame")
-KeyTab.Size = UDim2.new(1, 0, 1, -60)
-KeyTab.Position = UDim2.new(0, 0, 0, 60)
-KeyTab.BackgroundTransparency = 1
-KeyTab.Parent = MainFrame
+local KeyContainer = Instance.new("Frame")
+KeyContainer.Size = UDim2.new(1, 0, 1, -60)
+KeyContainer.Position = UDim2.new(0, 0, 0, 60)
+KeyContainer.BackgroundTransparency = 1
+KeyContainer.Parent = MainFrame
 
--- (tu wklejam cały key system z poprzedniej wersji – jest identyczny jak wcześniej)
+local KeyLabel = Instance.new("TextLabel")
+KeyLabel.Size = UDim2.new(1, 0, 0, 40)
+KeyLabel.BackgroundTransparency = 1
+KeyLabel.Text = "Wklej klucz poniżej (ważny 24h)"
+KeyLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+KeyLabel.TextSize = 22
+KeyLabel.Font = Enum.Font.GothamSemibold
+KeyLabel.Parent = KeyContainer
 
--- ==================== FUNKCJE (dodaj tu swoje) ====================
--- Przykład: po poprawnym kluczu dodajemy funkcje
+local KeyBox = Instance.new("TextBox")
+KeyBox.Size = UDim2.new(1, 0, 0, 50)
+KeyBox.Position = UDim2.new(0, 0, 0.2, 0)
+KeyBox.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyBox.PlaceholderText = "np. abc123-def456-ghi789"
+KeyBox.Text = ""
+KeyBox.ClearTextOnFocus = false
+KeyBox.Parent = KeyContainer
 
-local function LoadFunctions()
-    -- Tutaj dodasz wszystkie swoje funkcje (speed, noclip itd.) jako buttony
-    -- Na razie zostawiam miejsce – jak chcesz, to w następnej wiadomości dodam wszystkie
+local UICornerBox = Instance.new("UICorner")
+UICornerBox.CornerRadius = UDim.new(0, 10)
+UICornerBox.Parent = KeyBox
+
+local Submit = Instance.new("TextButton")
+Submit.Size = UDim2.new(1, 0, 0, 50)
+Submit.Position = UDim2.new(0, 0, 0.4, 0)
+Submit.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+Submit.Text = "ZATWIERDŹ KLUCZ"
+Submit.TextColor3 = Color3.fromRGB(255, 255, 255)
+Submit.TextSize = 24
+Submit.Font = Enum.Font.GothamBold
+Submit.Parent = KeyContainer
+
+local UICornerSubmit = Instance.new("UICorner")
+UICornerSubmit.CornerRadius = UDim.new(0, 10)
+UICornerSubmit.Parent = Submit
+
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, 0, 0, 40)
+Status.Position = UDim2.new(0, 0, 0.6, 0)
+Status.BackgroundTransparency = 1
+Status.Text = "Status: Oczekiwanie..."
+Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+Status.TextSize = 18
+Status.Parent = KeyContainer
+
+-- Key check + logika (bez zmian)
+local function CheckKey(Token)
+    local Success, Response = pcall(function()
+        return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token)
+    end)
+    return Success and Response and Response:find('"valid":true')
 end
 
--- ==================== PRZYCISKI X i MINIMIZE ====================
+Submit.MouseButton1Click:Connect(function()
+    local Token = KeyBox.Text
+    if Token == "" then
+        Status.Text = "Wpisz klucz!"
+        Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
 
-CloseButton.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
+    if CheckKey(Token) then
+        Status.Text = "SUKCES – HUB ODBLOKOWANY"
+        Status.TextColor3 = Color3.fromRGB(0, 255, 100)
+        
+        pcall(writefile, "QuantumX_Key.txt", Token)
+
+        task.delay(1, function()
+            KeyContainer.Visible = false
+
+            -- Pokazujemy hub (dodaj tu funkcje)
+            local HubLabel = Instance.new("TextLabel")
+            HubLabel.Size = UDim2.new(1, 0, 1, 0)
+            HubLabel.BackgroundTransparency = 1
+            HubLabel.Text = "Hub załadowany!\nDodaj funkcje poniżej"
+            HubLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            HubLabel.TextSize = 28
+            HubLabel.Font = Enum.Font.GothamBlack
+            HubLabel.Parent = MainFrame
+
+            -- Przykład funkcji (dodaj resztę)
+            local SpeedButton = Instance.new("TextButton")
+            SpeedButton.Size = UDim2.new(0.8, 0, 0, 60)
+            SpeedButton.Position = UDim2.new(0.1, 0, 0.3, 0)
+            SpeedButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+            SpeedButton.Text = "Włącz Speed Hack (100)"
+            SpeedButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+            SpeedButton.TextSize = 22
+            SpeedButton.Parent = MainFrame
+
+            local UICornerSpeed = Instance.new("UICorner")
+            UICornerSpeed.CornerRadius = UDim.new(0, 12)
+            UICornerSpeed.Parent = SpeedButton
+
+            SpeedButton.MouseButton1Click:Connect(function()
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    LocalPlayer.Character.Humanoid.WalkSpeed = 100
+                    Status.Text = "Speed włączony!"
+                end
+            end)
+        end)
+    else
+        Status.Text = "Nieprawidłowy klucz"
+        Status.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
 end)
 
-MinimizeButton.MouseButton1Click:Connect(function()
-    MainFrame.Visible = false
-    MinimizeIcon.Visible = true
+-- Auto-login
+local SavedKey = nil
+pcall(function()
+    if isfile("QuantumX_Key.txt") then
+        SavedKey = readfile("QuantumX_Key.txt")
+    end
 end)
 
-MinimizeIcon.MouseButton1Click:Connect(function()
-    MainFrame.Visible = true
-    MinimizeIcon.Visible = false
-end)
+if SavedKey and CheckKey(SavedKey) then
+    Status.Text = "Auto-login udany – hub załadowany"
+    Status.TextColor3 = Color3.fromRGB(0, 255, 100)
+    KeyBox.Visible = false
+    Submit.Visible = false
 
-print("Quantum X – ładne natywne UI załadowane (draggable + minimize + close)")
+    task.delay(1, function()
+        KeyContainer.Visible = false
+
+        local HubLabel = Instance.new("TextLabel")
+        HubLabel.Size = UDim2.new(1, 0, 1, 0)
+        HubLabel.BackgroundTransparency = 1
+        HubLabel.Text = "Hub załadowany!\nDodaj funkcje poniżej"
+        HubLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        HubLabel.TextSize = 28
+        HubLabel.Font = Enum.Font.GothamBlack
+        HubLabel.Parent = MainFrame
+
+        -- Dodaj tu funkcje jak wyżej
+    end)
+end
+
+print("Quantum X – responsywne UI załadowane")
