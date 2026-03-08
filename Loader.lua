@@ -1,9 +1,13 @@
--- Quantum X Loader – najprostszy możliwy
+-- Loader dla Quantum X
+-- Wklej poniżej swój link RAW z GitHuba do pliku hub.lua
+local hubURL = "TUTAJ_WKLEJ_LINK_RAW_DO_PLIKU_HUB.LUA"
 
-if getgenv().QuantumXLoaded then return end
-getgenv().QuantumXLoaded = true
+local success, result = pcall(function()
+    return game:HttpGet(hubURL)
+end)
 
-if not game:IsLoaded() then game.Loaded:Wait() end
-
--- Dodajemy random parametr, żeby Delta nie brała starego cache'u
-loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/main/Hub.lua?v=" .. math.random(100000,999999)))()
+if success then
+    loadstring(result)()
+else
+    warn("Quantum X: Nie udało się załadować skryptu. Sprawdź link do GitHuba.")
+end
