@@ -1,4 +1,4 @@
--- Quantum X Loader – FLUENT UI (test)
+-- Quantum X Loader – FLUENT UI (z proxy + fallback)
 
 if getgenv().QuantumXLoaded then return end
 getgenv().QuantumXLoaded = true
@@ -7,49 +7,32 @@ if not game:IsLoaded() then game.Loaded:Wait() end
 
 local Fluent = nil
 
--- Próba 1: normalny loadstring
+-- Próba 1: normalny GitHub raw
 pcall(function()
     Fluent = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/src/main.lua"))()
 end)
 
--- Próba 2: jeśli nie – przez proxy
+-- Próba 2: ghproxy
 if not Fluent then
-    print("Normalny Fluent nie przeszedł – próbuję proxy")
     pcall(function()
         Fluent = loadstring(game:HttpGet("https://ghproxy.com/https://raw.githubusercontent.com/dawid-scripts/Fluent/master/src/main.lua"))()
     end)
 end
 
+-- Próba 3: gitmirror (ostatnia deska ratunku)
 if not Fluent then
-    print("Fluent NIE załadował się nawet przez proxy")
-    print("Delta blokuje – zostaje natywne UI albo zmiana executora")
+    pcall(function()
+        Fluent = loadstring(game:HttpGet("https://raw.gitmirror.com/dawid-scripts/Fluent/master/src/main.lua"))()
+    end)
+end
+
+if not Fluent then
+    print("Fluent NIE załadował się nawet przez proxy – Delta blokuje")
+    print("Zmień executora na Solara/Wave lub zostań przy natywnym UI")
     return
 end
 
-print("Fluent załadowany – tworzę testowe UI")
+print("Fluent załadowany – ładuję pełny hub")
 
--- Testowe okno Fluent (bez key systemu, bez funkcji – czysto test)
-local Window = Fluent:CreateWindow({
-    Title = "Quantum X TEST",
-    SubTitle = "Test Fluent UI",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
-    Theme = "Dark",  -- czarny styl
-    Acrylic = true,  -- blur background
-    MinimizeKeybind = Enum.KeyCode.LeftControl
-})
-
-local Tab = Window:AddTab({ Title = "Test" })
-
-Tab:AddParagraph({
-    Title = "Status",
-    Content = "Jeśli widzisz to okno – Fluent działa! Możemy dodać key i funkcje."
-})
-
-Fluent:Notify({
-    Title = "Test udany",
-    Content = "Fluent UI załadowane bez key systemu",
-    Duration = 8
-})
-
-print("Testowe UI Fluent powinno być widoczne")
+-- Pełny kod huba poniżej (wklej cały jako Hub.lua)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/main/HubFluent.lua"))()
