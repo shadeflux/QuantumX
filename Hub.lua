@@ -5,162 +5,219 @@ local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
 
--- Ładowanie biblioteki Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Tworzenie głównego okna
 local Window = Rayfield:CreateWindow({
-    Name = "Quantum X",
-    LoadingTitle = "Ładowanie Quantum X...",
-    LoadingSubtitle = "Unseen. Unpatched. Unstoppable.",
+    Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
+    LoadingTitle = "Quantum X Hub",
+    LoadingSubtitle = "by Quantum X Corp",
     ConfigurationSaving = {
-        Enabled = false,
+        Enabled = true,
         FolderName = "QuantumX",
         FileName = "Config"
     },
     Discord = {
-        Enabled = false,
-        Invite = "", 
+        Enabled = true,
+        Invite = "XHEAeKSx34", -- Tylko kod zaproszenia
         RememberJoins = true 
     },
-    KeySystem = false
+    KeySystem = true, -- System kluczy włączony
+    KeySettings = {
+        Title = "Quantum X | Key System",
+        Subtitle = "Join Discord for Key: https://discord.gg/XHEAeKSx34",
+        Note = "The key can be obtained via Work.ink",
+        FileName = "QX_Key",
+        SaveKey = true,
+        GrabKeyFromSite = false, -- Ustaw na true jeśli masz API, lub zostaw false dla statycznego sprawdzenia
+        Key = {"QX_12345"} -- Tutaj wpisz swój klucz lub logikę sprawdzania
+    }
 })
 
--- Tworzenie zakładki
-local MainTab = Window:CreateTab("Główne", 4483362458) -- ID ikony
-local Section = MainTab:CreateSection("Funkcje Postaci")
-
--- Zmienne
+-- Zmienne dla funkcji
 local speedOn = false
-local ij = false
-local nc = false
-local flingOn = false
-local antiFling = nil
-local flingVelocity = nil
+local walkSpeedValue = 16
+local jumpOn = false
+local jumpPowerValue = 50
+local spectating = false
+local targetPlayer = nil
 
-local function getRoot()
-    local c = lp.Character
-    return c and (c:FindFirstChild("HumanoidRootPart") or c:FindFirstChild("Torso") or c:FindFirstChild("UpperTorso"))
-end
+-- GŁÓWNA ZAKŁADKA
+local MainTab = Window:CreateTab("Player", 4483362458)
 
--- SPEED
+-- SPEED SECTION
+MainTab:CreateSection("Movement")
+
 MainTab:CreateToggle({
-    Name = "Speed (32)",
+    Name = "Enable WalkSpeed",
     CurrentValue = false,
-    Flag = "SpeedTog",
+    Flag = "SpeedToggle",
     Callback = function(Value)
         speedOn = Value
-        local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
-        if h then h.WalkSpeed = speedOn and 32 or 16 end
+        if not Value then
+            if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+                lp.Character.Humanoid.WalkSpeed = 16
+            end
+        end
     end,
 })
 
--- INFINITE JUMP
-MainTab:CreateToggle({
-    Name = "Infinite Jump",
-    CurrentValue = false,
-    Flag = "InfJumpTog",
+MainTab:CreateSlider({
+    Name = "WalkSpeed Value",
+    Range = {16, 500},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 16,
+    Flag = "SpeedSlider",
     Callback = function(Value)
-        ij = Value
+        walkSpeedValue = Value
     end,
 })
 
-UIS.JumpRequest:Connect(function()
-    if ij and lp.Character and lp.Character:FindFirstChild("Humanoid") then
-        lp.Character.Humanoid:ChangeState("Jumping")
-    end
-end)
-
--- NOCLIP
+-- JUMPPOWER SECTION
 MainTab:CreateToggle({
-    Name = "NoClip",
+    Name = "Enable JumpPower",
     CurrentValue = false,
-    Flag = "NoClipTog",
+    Flag = "JumpToggle",
     Callback = function(Value)
-        nc = Value
+        jumpOn = Value
+        if not Value then
+            if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+                lp.Character.Humanoid.JumpPower = 50
+            end
+        end
     end,
 })
 
+MainTab:CreateSlider({
+    Name = "JumpPower Value",
+    Range = {50, 500},
+    Increment = 1,
+    Suffix = "Power",
+    CurrentValue = 50,
+    Flag = "JumpSlider",
+    Callback = function(Value)
+        jumpPowerValue = Value
+    end,
+})
+
+-- Pętla aktualizująca statystyki
 task.spawn(function()
     while true do
-        if nc and lp.Character then
-            for _, v in lp.Character:GetDescendants() do
-                if v:IsA("BasePart") then v.CanCollide = false end
-            end
+        local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
+        if h then
+            if speedOn then h.WalkSpeed = walkSpeedValue end
+            if jumpOn then h.JumpPower = jumpPowerValue end
         end
         task.wait(0.1)
     end
 end)
 
-local CombatSection = MainTab:CreateSection("Funkcje PVP / Trolling")
+-- TELEPORT & SPECTATE
+local TeleportTab = Window:CreateTab("Teleportation", 4483362458)
+TeleportTab:CreateSection("Target Player")
 
--- FLING
-MainTab:CreateToggle({
-    Name = "Fling",
-    CurrentValue = false,
-    Flag = "FlingTog",
-    Callback = function(Value)
-        flingOn = Value
-        local c = lp.Character
-        local root = getRoot()
-        
-        if flingOn and c and root then
-            for _, v in c:GetDescendants() do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                    v.Massless = true
-                end
+local PlayerInput = TeleportTab:CreateInput({
+    Name = "Player Name",
+    PlaceholderText = "Type username...",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        for _, v in pairs(Players:GetPlayers()) do
+            if v.Name:lower():find(Text:lower()) or v.DisplayName:lower():find(Text:lower()) then
+                targetPlayer = v
+                Rayfield:Notify({Title = "Target Found", Content = "Selected: " .. v.Name, Duration = 3})
+                break
             end
-            
-            flingVelocity = Instance.new("BodyAngularVelocity")
-            flingVelocity.AngularVelocity = Vector3.new(0, 99999, 0)
-            flingVelocity.MaxTorque = Vector3.new(0, math.huge, 0)
-            flingVelocity.Parent = root
+        end
+    end,
+})
 
+TeleportTab:CreateButton({
+    Name = "Teleport to Player",
+    Callback = function()
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            lp.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame
+        else
+            Rayfield:Notify({Title = "Error", Content = "Player not found or dead", Duration = 3})
+        end
+    end,
+})
+
+TeleportTab:CreateToggle({
+    Name = "Spectate Player",
+    CurrentValue = false,
+    Flag = "SpectateToggle",
+    Callback = function(Value)
+        spectating = Value
+        if Value then
             task.spawn(function()
-                while flingOn do
-                    if flingVelocity and flingVelocity.Parent then flingVelocity.AngularVelocity = Vector3.new(0, 99999, 0) end
-                    task.wait(0.2)
-                    if flingVelocity and flingVelocity.Parent then flingVelocity.AngularVelocity = Vector3.new(0, 0, 0) end
+                while spectating do
+                    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+                        workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+                    end
                     task.wait(0.1)
                 end
-                if flingVelocity then flingVelocity:Destroy() end
+                workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
             end)
         else
-            if flingVelocity then flingVelocity:Destroy() end
+            workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
         end
     end,
 })
 
--- ANTI FLING
-MainTab:CreateToggle({
-    Name = "Anti Fling",
-    CurrentValue = false,
-    Flag = "AntiFlingTog",
-    Callback = function(Value)
-        if Value then
-            antiFling = RS.Stepped:Connect(function()
-                for _, player in Players:GetPlayers() do
-                    if player ~= lp and player.Character then
-                        for _, v in player.Character:GetDescendants() do
-                            if v:IsA("BasePart") then v.CanCollide = false end
-                        end
-                    end
+-- SERVER UTILS
+local ServerTab = Window:CreateTab("Server", 4483362458)
+
+ServerTab:CreateButton({
+    Name = "Rejoin Server",
+    Callback = function()
+        TeleportService:Teleport(game.PlaceId, lp)
+    end,
+})
+
+ServerTab:CreateButton({
+    Name = "Server Hop",
+    Callback = function()
+        local Http = game:GetService("HttpService")
+        local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
+        local function GetServer()
+            local Raw = game:HttpGet(Api)
+            local Decode = Http:JSONDecode(Raw)
+            for _, v in pairs(Decode.data) do
+                if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                    return v.id
                 end
-            end)
-        else
-            if antiFling then
-                antiFling:Disconnect()
-                antiFling = nil
             end
         end
+        local serverId = GetServer()
+        if serverId then
+            TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, lp)
+        end
     end,
 })
 
-Rayfield:Notify({
-    Title = "Quantum X",
-    Content = "Skrypt załadowany pomyślnie!",
-    Duration = 3,
-    Image = 4483362458,
+-- MISC & CREDITS
+local SettingsTab = Window:CreateTab("Settings", 4483362458)
+SettingsTab:CreateSection("Quantum X Corp")
+
+SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
+SettingsTab:CreateLabel("Developed by Quantum X Team")
+
+SettingsTab:CreateButton({
+    Name = "Destroy UI",
+    Callback = function()
+        Rayfield:Destroy()
+        getgenv().QuantumXLoaded = false
+    end,
 })
+
+SettingsTab:CreateButton({
+    Name = "Copy Discord Link",
+    Callback = function()
+        setclipboard("https://discord.gg/XHEAeKSx34")
+        Rayfield:Notify({Title = "Success", Content = "Link copied to clipboard!", Duration = 3})
+    end,
+})
+
+Rayfield:LoadConfiguration()
