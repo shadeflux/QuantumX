@@ -1,6 +1,6 @@
 -- Loader dla Quantum X
 -- Wklej poniżej swój link RAW z GitHuba do pliku hub.lua
-local hubURL = "TUTAJ_WKLEJ_LINK_RAW_DO_PLIKU_HUB.LUA"
+local hubURL = "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua"
 
 local success, result = pcall(function()
     return game:HttpGet(hubURL)
