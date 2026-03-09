@@ -106,6 +106,16 @@ end)
 
 -- === GŁÓWNA FUNKCJA ŁADUJĄCA INTERFEJS ===
 local function LoadMainWindow()
+    local function LoadMainWindow()
+    if game.PlaceId == 893973440 then
+        -- Jeśli to Flee the Facility, załaduj ten nowy plik
+        loadstring(game:HttpGet("TUTAJ_WKLEJ_LINK_RAW_DO_PLIKU_FTF_Z_GITHUB"))()
+    else
+        -- Jeśli inna gra, odpalasz zwykły Hub, tak jak miałeś w starym kodzie
+        -- (tutaj kod Twojego uniwersalnego huba z poprzednich wiadomości)
+    end
+    end
+    
     local Window = Rayfield:CreateWindow({
         Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
         LoadingTitle = "Quantum X Hub",
