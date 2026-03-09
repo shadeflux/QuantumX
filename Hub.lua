@@ -228,7 +228,7 @@ SettingsTab:CreateButton({
 Rayfield:LoadConfiguration()
 -- === LOGIKA KEY SYSTEM ===
 local SavedKey = nil
-local KeyFile = "EsidelieHub_Key.txt"
+local KeyFile = "QuantumX_Key.txt"
 
 pcall(function()
     if isfile and isfile(KeyFile) then
