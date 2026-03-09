@@ -129,11 +129,9 @@ else
     KeyTab:CreateButton({Name = "Zatwierdź klucz", Callback = function()
         if CheckKey(inputKey) then
             writefile(KeyFile, inputKey)
-            
-            -- ZMIANA KOLEJNOŚCI: Najpierw ładujemy, potem niszczymy stare
+            Rayfield:Destroy()
+            task.wait(0.5)
             LoadMainWindow()
-            task.wait(0.1)
-            KeyWindow:Destroy()
         else
             Rayfield:Notify({Title = "Błąd", Content = "Nieprawidłowy klucz!"})
         end
