@@ -3,213 +3,150 @@ getgenv().QuantumXLoaded = true
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local Http = game:GetService("HttpService")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- === GLOBALNE ZMIENNE ===
-local speedOn = false
-local walkSpeedValue = 16
-local jumpOn = false
-local jumpPowerValue = 50
-local spectating = false
-local targetPlayer = nil
+-- === ZMIENNE GLOBALNE ===
+local speedOn, walkSpeedValue = false, 16
+local jumpOn, jumpPowerValue = false, 50
+local noclipOn = false
+local playerEspOn, computerEspOn, doorEspOn = false, false, false
 
--- Zmienne ESP
-local playerEspOn = false
-local computerEspOn = false
-local doorEspOn = false
+-- Zmienne Auto-Farm FtF
+local autoComputer, autoDoor = false, false
+local isEvading, savedPos = false, nil
+local safeHeight = 500
 
--- === PĘTLE FUNKCJONALNE ===
--- 1. Szybkość i Skok
-task.spawn(function()
-    while true do
-        local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
+-- === FUNKCJE POMOCNICZE FTF ===
+local function getBeast()
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= lp and p.Character then
+            if p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer")) then
+                return p.Character
+            end
+        end
+    end
+    return nil
+end
+
+local function getNearest(objectName)
+    local nearest, shortestDist = nil, math.huge
+    if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return nil end
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("Model") and v.Name == objectName then
+            local root = v:FindFirstChild("ComputerPart") or v:FindFirstChildWhichIsA("BasePart")
+            if root then
+                local dist = (root.Position - lp.Character.HumanoidRootPart.Position).Magnitude
+                if dist < shortestDist then shortestDist = dist; nearest = v end
+            end
+        end
+    end
+    return nearest
+end
+
+-- === PĘTLE (MOVEMENT & FTF LOGIC) ===
+RunService.Stepped:Connect(function()
+    if lp.Character then
+        local h = lp.Character:FindFirstChild("Humanoid")
         if h then
             if speedOn then h.WalkSpeed = walkSpeedValue end
             if jumpOn then h.JumpPower = jumpPowerValue end
         end
-        task.wait(0.1)
-    end
-end)
-
--- 2. Spectate
-task.spawn(function()
-    while true do
-        if spectating and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
-        elseif not spectating and lp.Character and lp.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-        end
-        task.wait(0.1)
-    end
-end)
-
--- 3. System ESP (Flee the Facility)
-task.spawn(function()
-    while true do
-        -- ESP Graczy / Bestii
-        for _, p in pairs(Players:GetPlayers()) do
-            if p ~= lp and p.Character then
-                local hl = p.Character:FindFirstChild("QuantumESP")
-                if playerEspOn then
-                    -- W FtF bestia zazwyczaj ma w ekwipunku lub ręce "Hammer" (młot)
-                    local isBeast = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
-                    
-                    if not hl then
-                        hl = Instance.new("Highlight")
-                        hl.Name = "QuantumESP"
-                        hl.FillTransparency = 0.5
-                        hl.OutlineTransparency = 0.2
-                        hl.Parent = p.Character
-                    end
-                    -- Bestia = Czerwony, Gracz = Zielony
-                    hl.FillColor = isBeast and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-                    hl.OutlineColor = isBeast and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-                else
-                    if hl then hl:Destroy() end
-                end
+        if noclipOn then
+            for _, v in pairs(lp.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
             end
         end
+    end
+end)
 
-        -- Funkcja pomocnicza do ESP obiektów (Komputery i Drzwi)
-        local function handleObjEsp(objName, color, isOn)
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj.Name == objName then
-                    local hl = obj:FindFirstChild("QuantumESP")
-                    if isOn then
-                        if not hl then
-                            hl = Instance.new("Highlight")
-                            hl.Name = "QuantumESP"
-                            hl.FillColor = color
-                            hl.OutlineColor = color
-                            hl.FillTransparency = 0.5
-                            hl.OutlineTransparency = 0.2
-                            hl.Parent = obj
-                        end
-                    else
-                        if hl then hl:Destroy() end
+task.spawn(function()
+    while task.wait(0.5) do
+        if game.PlaceId == 893973440 then
+            -- Logika ESP
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= lp and p.Character then
+                    local hl = p.Character:FindFirstChild("QuantumESP")
+                    if playerEspOn then
+                        if not hl then hl = Instance.new("Highlight", p.Character); hl.Name = "QuantumESP" end
+                        local isBeast = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
+                        hl.FillColor = isBeast and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
+                    elseif hl then hl:Destroy() end
+                end
+            end
+
+            -- Logika Auto-Farm & Evasion
+            local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and (autoComputer or autoDoor) then
+                local beast = getBeast()
+                local bPos = beast and beast:FindFirstChild("HumanoidRootPart") and beast.HumanoidRootPart.Position
+                if bPos and (bPos - hrp.Position).Magnitude < 40 and not isEvading then
+                    savedPos = hrp.CFrame; hrp.CFrame = hrp.CFrame + Vector3.new(0, safeHeight, 0)
+                    isEvading = true
+                    Rayfield:Notify({Title = "BEAST NEAR!", Content = "Teleporting to sky.", Duration = 2})
+                elseif isEvading and bPos and (bPos - hrp.Position).Magnitude > 60 then
+                    if savedPos then hrp.CFrame = savedPos end
+                    isEvading = false
+                end
+
+                if not isEvading then
+                    local target = autoComputer and getNearest("ComputerTable") or (autoDoor and getNearest("ExitDoor"))
+                    if target then
+                        local tRoot = target:FindFirstChild("ComputerPart") or target:FindFirstChildWhichIsA("BasePart")
+                        if tRoot then hrp.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3) end
                     end
                 end
             end
         end
-
-        -- Niebieski dla komputerów, Żółty dla drzwi wyjściowych
-        handleObjEsp("ComputerTable", Color3.fromRGB(0, 200, 255), computerEspOn)
-        handleObjEsp("ExitDoor", Color3.fromRGB(255, 255, 0), doorEspOn)
-
-        task.wait(1) -- Odświeżamy co 1 sekundę, żeby nie lagować gry
     end
 end)
 
-
--- === GŁÓWNA FUNKCJA ŁADUJĄCA INTERFEJS ===
+-- === INTERFEJS ===
 local function LoadMainWindow()
-    if game.PlaceId == 893973440 then
-        -- Jeśli to Flee the Facility, załaduj ten nowy plik
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
-    else
-        -- Jeśli inna gra, odpalasz zwykły Hub, tak jak miałeś w starym kodzie
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua"))() -- (tutaj kod Twojego uniwersalnego huba z poprzednich wiadomości)
-    end
-    end
-    
+    local isFtF = (game.PlaceId == 893973440)
     local Window = Rayfield:CreateWindow({
-        Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
+        Name = "Quantum X | " .. (isFtF and "Flee The Facility" or "Universal Hub"),
         LoadingTitle = "Quantum X Hub",
         LoadingSubtitle = "by Quantum X Corp",
         Theme = "Amethyst",
-        ConfigurationSaving = { Enabled = true, FolderName = "QuantumX", FileName = "Config" },
-        Discord = { Enabled = true, Invite = "XHEAeKSx34", RememberJoins = true },
+        ConfigurationSaving = { Enabled = true, FolderName = "QuantumX" },
         KeySystem = false
     })
 
-    -- ZAKŁADKA 1: Flee the Facility
-    local FtfTab = Window:CreateTab("Flee the Facility", 4483362458)
-    
-    FtfTab:CreateSection("Visuals (ESP)")
-    FtfTab:CreateToggle({Name = "Enable Player & Beast ESP", CurrentValue = playerEspOn, Flag = "EspPlayer", Callback = function(Value) playerEspOn = Value end})
-    FtfTab:CreateToggle({Name = "Enable Computers ESP", CurrentValue = computerEspOn, Flag = "EspComputer", Callback = function(Value) computerEspOn = Value end})
-    FtfTab:CreateToggle({Name = "Enable Exit Doors ESP", CurrentValue = doorEspOn, Flag = "EspDoor", Callback = function(Value) doorEspOn = Value end})
+    if isFtF then
+        local FtFTab = Window:CreateTab("Flee The Facility", 4483362458)
+        FtFTab:CreateSection("Automation")
+        FtFTab:CreateToggle({Name = "Auto-Computer (Escape System)", CurrentValue = autoComputer, Callback = function(v) autoComputer = v end})
+        FtFTab:CreateToggle({Name = "Auto-Exit Door", CurrentValue = autoDoor, Callback = function(v) autoDoor = v end})
+        
+        FtFTab:CreateSection("Visuals")
+        FtFTab:CreateToggle({Name = "Player/Beast ESP", CurrentValue = playerEspOn, Callback = function(v) playerEspOn = v end})
+        
+        FtFTab:CreateSection("Movement")
+        FtFTab:CreateToggle({Name = "Noclip", CurrentValue = noclipOn, Callback = function(v) noclipOn = v end})
+        FtFTab:CreateToggle({Name = "WalkSpeed", CurrentValue = speedOn, Callback = function(v) speedOn = v; if not v then lp.Character.Humanoid.WalkSpeed = 16 end end})
+        FtFTab:CreateSlider({Name = "Speed Value", Range = {16, 100}, Increment = 1, CurrentValue = 16, Callback = function(v) walkSpeedValue = v end})
+    else
+        local MainTab = Window:CreateTab("Features", 4483362458)
+        MainTab:CreateSection("Universal Movement")
+        MainTab:CreateToggle({Name = "WalkSpeed", CurrentValue = speedOn, Callback = function(v) speedOn = v end})
+        MainTab:CreateSlider({Name = "Speed Value", Range = {16, 300}, Increment = 1, CurrentValue = 16, Callback = function(v) walkSpeedValue = v end})
+    end
 
-    -- ZAKŁADKA 2: Universal Features
-    local MainTab = Window:CreateTab("Features", 4483362458)
-    
-    MainTab:CreateSection("Movement")
-    MainTab:CreateToggle({Name = "Enable WalkSpeed", CurrentValue = speedOn, Flag = "SpeedToggle", Callback = function(Value) 
-        speedOn = Value 
-        if not Value and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = 16 end
-    end})
-    MainTab:CreateSlider({Name = "WalkSpeed Value", Range = {16, 500}, Increment = 1, CurrentValue = walkSpeedValue, Callback = function(Value) 
-        walkSpeedValue = Value 
-        if speedOn and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = Value end
-    end})
-    MainTab:CreateToggle({Name = "Enable JumpPower", CurrentValue = jumpOn, Flag = "JumpToggle", Callback = function(Value) 
-        jumpOn = Value 
-        if not Value and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.JumpPower = 50 end
-    end})
-    MainTab:CreateSlider({Name = "JumpPower Value", Range = {50, 500}, Increment = 1, CurrentValue = jumpPowerValue, Callback = function(Value) 
-        jumpPowerValue = Value 
-        if jumpOn and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.JumpPower = Value end
-    end})
-
-    MainTab:CreateSection("Teleportation & Spectate")
-    MainTab:CreateInput({Name = "Target Player Name", PlaceholderText = "Wpisz nazwę...", Callback = function(Text)
-        for _, v in pairs(Players:GetPlayers()) do
-            if v.Name:lower():find(Text:lower()) then targetPlayer = v break end
-        end
-    end})
-    MainTab:CreateButton({Name = "Teleport to Player", Callback = function()
-        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then 
-            lp.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame 
-        end
-    end})
-    MainTab:CreateToggle({Name = "Spectate Player", CurrentValue = spectating, Callback = function(Value) spectating = Value end})
-
-    MainTab:CreateSection("Server Utils")
-    MainTab:CreateButton({Name = "Rejoin Server", Callback = function() TeleportService:Teleport(game.PlaceId, lp) end})
-    MainTab:CreateButton({Name = "Server Hop", Callback = function()
-        local Raw = game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100")
-        local Decode = Http:JSONDecode(Raw)
-        for _, v in pairs(Decode.data) do
-            if v.playing < v.maxPlayers and v.id ~= game.JobId then TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, lp) break end
-        end
-    end})
-
-    -- ZAKŁADKA 3: Hub Scripts (Skrypty Zewnętrzne)
     local ScriptsTab = Window:CreateTab("Scripts", 4483362458)
-    
-    ScriptsTab:CreateSection("Exploiting Tools")
-    ScriptsTab:CreateButton({Name = "Load Infinite Yield", Callback = function() 
-        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() 
-    end})
-    ScriptsTab:CreateButton({Name = "Load Dex Explorer", Callback = function() 
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() 
-    end})
-    ScriptsTab:CreateButton({Name = "Load SimpleSpy", Callback = function() 
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))() 
-    end})
+    ScriptsTab:CreateButton({Name = "Infinite Yield", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end})
+    ScriptsTab:CreateButton({Name = "Dex Explorer", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() end})
 
-    -- ZAKŁADKA 4: Settings
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
-    
-    SettingsTab:CreateSection("System & Credits")
     SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable. | Developed by Quantum X Team")
     SettingsTab:CreateDivider()
-    SettingsTab:CreateButton({Name = "Copy Discord Link", Callback = function() setclipboard("https://discord.gg/XHEAeKSx34") end})
-    SettingsTab:CreateButton({Name = "Destroy UI", Callback = function() 
-        -- Niszczymy UI i czyścimy wszystkie ESP przed wyjściem
-        playerEspOn = false; computerEspOn = false; doorEspOn = false
-        task.wait(1.5) -- Czekamy aż pętla ESP oczyści mapę
-        Rayfield:Destroy() 
-        getgenv().QuantumXLoaded = false 
-    end})
-
-    Rayfield:LoadConfiguration()
+    SettingsTab:CreateButton({Name = "Destroy UI", Callback = function() Rayfield:Destroy(); getgenv().QuantumXLoaded = false end})
 end
 
--- === LOGIKA KEY ===
+-- === KEY SYSTEM ===
 local function CheckKey(Token)
     local Success, Response = pcall(function() return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token) end)
     return Success and Response:find('"valid":true') ~= nil
@@ -224,21 +161,13 @@ if SavedKey and CheckKey(SavedKey) then
 else
     local KeyWindow = Rayfield:CreateWindow({Name = "Quantum X | Verification", Theme = "Amethyst", KeySystem = false})
     local KeyTab = KeyWindow:CreateTab("Key System", nil)
-    
-    KeyTab:CreateButton({Name = "Otwórz checkpointy (Get Key)", Callback = function() 
-        setclipboard("https://work.ink/2dRx/key-system")
-    end})
-    
-    KeyTab:CreateInput({Name = "Wklej klucz", PlaceholderText = "Wpisz tutaj...", Callback = function(Value) inputKey = Value end})
-    
-    KeyTab:CreateButton({Name = "Zatwierdź klucz", Callback = function()
+    KeyTab:CreateButton({Name = "Get Key", Callback = function() setclipboard("https://work.ink/2dRx/key-system") end})
+    KeyTab:CreateInput({Name = "Paste Key", PlaceholderText = "Key here...", Callback = function(v) inputKey = v end})
+    KeyTab:CreateButton({Name = "Verify", Callback = function()
         if CheckKey(inputKey) then
-            writefile(KeyFile, inputKey)
-            Rayfield:Destroy()
-            task.wait(0.5)
-            LoadMainWindow()
+            writefile(KeyFile, inputKey); Rayfield:Destroy(); task.wait(0.5); LoadMainWindow()
         else
-            Rayfield:Notify({Title = "Błąd", Content = "Nieprawidłowy klucz!"})
+            Rayfield:Notify({Title = "Error", Content = "Invalid Key!"})
         end
     end})
 end
