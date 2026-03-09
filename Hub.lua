@@ -3,38 +3,21 @@ getgenv().QuantumXLoaded = true
 
 local Players = game:GetService("Players")
 local lp = Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RS = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
+local Http = game:GetService("HttpService")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window = Rayfield:CreateWindow({
-    Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
-    LoadingTitle = "Quantum X Hub",
-    LoadingSubtitle = "by Quantum X Corp",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "QuantumX",
-        FileName = "Config"
-    },
-    Discord = {
-        Enabled = true,
-        Invite = "XHEAeKSx34", -- Tylko kod zaproszenia
-        RememberJoins = true 
-    },
-    KeySystem = false
-})
-
--- Zmienne dla funkcji
+-- Globalne zmienne funkcji, aby działały niezależnie od restartu UI
 local speedOn = false
 local walkSpeedValue = 16
 local jumpOn = false
 local jumpPowerValue = 50
 local spectating = false
 local targetPlayer = nil
+local currentTheme = "Default" -- Domyślny motyw
 
--- Pętla aktualizująca statystyki (działa w tle)
+-- Pętla aktualizująca statystyki gracza (działa w tle)
 task.spawn(function()
     while true do
         local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
@@ -46,24 +29,51 @@ task.spawn(function()
     end
 end)
 
--- === GŁÓWNA FUNKCJA ŁADUJĄCA HUB ===
-local function LoadMainMenu()
-    -- GŁÓWNA ZAKŁADKA
-    local MainTab = Window:CreateTab("Player", 4483362458)
+-- Pętla spectate (działa w tle)
+task.spawn(function()
+    while true do
+        if spectating and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
+        elseif not spectating and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+            workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
+        end
+        task.wait(0.1)
+    end
+end)
 
-    -- SPEED SECTION
-    MainTab:CreateSection("Movement")
+-- === GŁÓWNY INTERFEJS (BEZ ZAKŁADKI KEY) ===
+local function LoadMainWindow(themeName)
+    local Window = Rayfield:CreateWindow({
+        Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
+        LoadingTitle = "Quantum X Hub",
+        LoadingSubtitle = "by Quantum X Corp",
+        Theme = themeName,
+        ConfigurationSaving = {
+            Enabled = true,
+            FolderName = "QuantumX",
+            FileName = "Config"
+        },
+        Discord = {
+            Enabled = true,
+            Invite = "XHEAeKSx34",
+            RememberJoins = true 
+        },
+        KeySystem = false
+    })
 
+    -- 1. ZAKŁADKA: WSZYSTKIE FUNKCJE
+    local MainTab = Window:CreateTab("Features", 4483362458)
+    MainTab:CreateSection("All Modules")
+
+    -- Movement
     MainTab:CreateToggle({
         Name = "Enable WalkSpeed",
-        CurrentValue = false,
+        CurrentValue = speedOn,
         Flag = "SpeedToggle",
         Callback = function(Value)
             speedOn = Value
-            if not Value then
-                if lp.Character and lp.Character:FindFirstChild("Humanoid") then
-                    lp.Character.Humanoid.WalkSpeed = 16
-                end
+            if not Value and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+                lp.Character.Humanoid.WalkSpeed = 16
             end
         end,
     })
@@ -73,24 +83,21 @@ local function LoadMainMenu()
         Range = {16, 500},
         Increment = 1,
         Suffix = "Speed",
-        CurrentValue = 16,
+        CurrentValue = walkSpeedValue,
         Flag = "SpeedSlider",
         Callback = function(Value)
             walkSpeedValue = Value
         end,
     })
 
-    -- JUMPPOWER SECTION
     MainTab:CreateToggle({
         Name = "Enable JumpPower",
-        CurrentValue = false,
+        CurrentValue = jumpOn,
         Flag = "JumpToggle",
         Callback = function(Value)
             jumpOn = Value
-            if not Value then
-                if lp.Character and lp.Character:FindFirstChild("Humanoid") then
-                    lp.Character.Humanoid.JumpPower = 50
-                end
+            if not Value and lp.Character and lp.Character:FindFirstChild("Humanoid") then
+                lp.Character.Humanoid.JumpPower = 50
             end
         end,
     })
@@ -100,19 +107,16 @@ local function LoadMainMenu()
         Range = {50, 500},
         Increment = 1,
         Suffix = "Power",
-        CurrentValue = 50,
+        CurrentValue = jumpPowerValue,
         Flag = "JumpSlider",
         Callback = function(Value)
             jumpPowerValue = Value
         end,
     })
 
-    -- TELEPORT & SPECTATE
-    local TeleportTab = Window:CreateTab("Teleportation", 4483362458)
-    TeleportTab:CreateSection("Target Player")
-
-    local PlayerInput = TeleportTab:CreateInput({
-        Name = "Player Name",
+    -- Teleportation
+    MainTab:CreateInput({
+        Name = "Target Player Name",
         PlaceholderText = "Type username...",
         RemoveTextAfterFocusLost = false,
         Callback = function(Text)
@@ -126,7 +130,7 @@ local function LoadMainMenu()
         end,
     })
 
-    TeleportTab:CreateButton({
+    MainTab:CreateButton({
         Name = "Teleport to Player",
         Callback = function()
             if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
@@ -137,73 +141,64 @@ local function LoadMainMenu()
         end,
     })
 
-    TeleportTab:CreateToggle({
+    MainTab:CreateToggle({
         Name = "Spectate Player",
-        CurrentValue = false,
+        CurrentValue = spectating,
         Flag = "SpectateToggle",
         Callback = function(Value)
             spectating = Value
-            if Value then
-                task.spawn(function()
-                    while spectating do
-                        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
-                            workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
-                        end
-                        task.wait(0.1)
-                    end
-                    workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-                end)
-            else
-                workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-            end
         end,
     })
 
-    -- SERVER UTILS
-    local ServerTab = Window:CreateTab("Server", 4483362458)
-
-    ServerTab:CreateButton({
+    -- Server Utils
+    MainTab:CreateButton({
         Name = "Rejoin Server",
         Callback = function()
             TeleportService:Teleport(game.PlaceId, lp)
         end,
     })
 
-    ServerTab:CreateButton({
+    MainTab:CreateButton({
         Name = "Server Hop",
         Callback = function()
-            local Http = game:GetService("HttpService")
             local Api = "https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"
-            local function GetServer()
-                local Raw = game:HttpGet(Api)
-                local Decode = Http:JSONDecode(Raw)
-                for _, v in pairs(Decode.data) do
-                    if v.playing < v.maxPlayers and v.id ~= game.JobId then
-                        return v.id
-                    end
+            local Raw = game:HttpGet(Api)
+            local Decode = Http:JSONDecode(Raw)
+            for _, v in pairs(Decode.data) do
+                if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id, lp)
+                    break
                 end
-            end
-            local serverId = GetServer()
-            if serverId then
-                TeleportService:TeleportToPlaceInstance(game.PlaceId, serverId, lp)
             end
         end,
     })
 
-    -- MISC & CREDITS
+
+    -- 2. ZAKŁADKA: USTAWIENIA I CREDITS
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
-    SettingsTab:CreateSection("Quantum X")
+    SettingsTab:CreateSection("UI Configuration")
+
+    SettingsTab:CreateDropdown({
+        Name = "UI Theme",
+        Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
+        CurrentOption = {currentTheme},
+        MultipleOptions = false,
+        Flag = "ThemeDropdown",
+        Callback = function(Options)
+            local selectedTheme = Options[1]
+            if selectedTheme ~= currentTheme then
+                currentTheme = selectedTheme
+                Rayfield:Destroy() -- Niszczy obecne UI
+                task.wait(0.1)
+                LoadMainWindow(currentTheme) -- Ładuje ponownie z nowym motywem
+            end
+        end,
+    })
+
+    SettingsTab:CreateSection("System & Credits")
 
     SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
     SettingsTab:CreateLabel("Developed by Quantum X Team")
-
-    SettingsTab:CreateButton({
-        Name = "Destroy UI",
-        Callback = function()
-            Rayfield:Destroy()
-            getgenv().QuantumXLoaded = false
-        end,
-    })
 
     SettingsTab:CreateButton({
         Name = "Copy Discord Link",
@@ -213,96 +208,76 @@ local function LoadMainMenu()
         end,
     })
 
+    SettingsTab:CreateButton({
+        Name = "Destroy UI",
+        Callback = function()
+            Rayfield:Destroy()
+            getgenv().QuantumXLoaded = false
+        end,
+    })
+
     Rayfield:LoadConfiguration()
 end
 
 
--- === LOGIKA KEY SYSTEM ===
+-- === LOGIKA KEY SYSTEM (Tymczasowe Okno Logowania) ===
 local function CheckKey(Token)
     local Url = "https://work.ink/_api/v2/token/isValid/" .. Token
-    local Success, Response = pcall(function()
-        return game:HttpGet(Url)
-    end)
-    
-    if Success and Response:find('"valid":true') then
-        return true
-    else
-        return false
-    end
+    local Success, Response = pcall(function() return game:HttpGet(Url) end)
+    return Success and Response:find('"valid":true') ~= nil
 end
 
 local SavedKey = nil
 local KeyFile = "QuantumX_Key.txt"
 
 pcall(function()
-    if isfile and isfile(KeyFile) then
-        SavedKey = readfile(KeyFile)
-    end
+    if isfile and isfile(KeyFile) then SavedKey = readfile(KeyFile) end
 end)
 
-local KeyValid = false
-if SavedKey then
-    KeyValid = CheckKey(SavedKey)
-end
-
-if KeyValid then
-    Rayfield:Notify({
-        Title = "Auto-Login",
-        Content = "Zapisany klucz ważny – hub załadowany automatycznie!",
-        Duration = 8
-    })
-    LoadMainMenu()
+if SavedKey and CheckKey(SavedKey) then
+    -- Jeśli klucz jest poprawny od razu przy starcie, pomiń Key System i ładuj główny Hub
+    LoadMainWindow(currentTheme)
+    Rayfield:Notify({Title = "Auto-Login", Content = "Zapisany klucz ważny!", Duration = 5})
 else
-    if SavedKey then
-        pcall(function() delfile(KeyFile) end)
-    end
+    if SavedKey then pcall(function() delfile(KeyFile) end) end
     
-    local KeyTab = Window:CreateTab("Key System", nil)
+    -- Tworzymy tymczasowe okno TYLKO dla Key Systemu
+    local KeyWindow = Rayfield:CreateWindow({
+        Name = "Quantum X | Verification",
+        LoadingTitle = "Checking Access...",
+        LoadingSubtitle = "by Quantum X",
+        KeySystem = false
+    })
+    
+    local KeyTab = KeyWindow:CreateTab("Key System", nil)
 
-    KeyTab:CreateLabel("Klucz ważny 24h – przejdź checkpointy jak w Delta!")
-    KeyTab:CreateLabel("Po ukończeniu kroków strona auto wygeneruje klucz – skopiuj i wklej poniżej.")
+    KeyTab:CreateLabel("Ukończ kroki, aby wygenerować klucz.")
 
     KeyTab:CreateButton({
         Name = "Otwórz checkpointy (Get Key)",
         Callback = function()
             setclipboard("https://work.ink/2dRx/key-system")
-            Rayfield:Notify({
-                Title = "Skopiowano!",
-                Content = "Wklej w przeglądarkę i ukończ WSZYSTKIE kroki.\nPo zakończeniu skopiuj klucz i wklej tutaj.",
-                Duration = 15
-            })
+            Rayfield:Notify({Title = "Skopiowano!", Content = "Wklej w przeglądarkę i ukończ kroki.", Duration = 8})
         end
     })
 
     KeyTab:CreateInput({
         Name = "Wklej klucz/token tutaj",
-        PlaceholderText = "np. abc123-def456-ghi789",
+        PlaceholderText = "Wprowadź klucz...",
         RemoveTextAfterFocusLost = false,
         Callback = function(Token)
-            if Token == "" then
-                Rayfield:Notify({Title = "Błąd", Content = "Wklej klucz!", Duration = 5})
-                return
-            end
+            if Token == "" then return end
             
             if CheckKey(Token) then
-                Rayfield:Notify({
-                    Title = "Sukces!",
-                    Content = "Klucz poprawny! Zapisuję i ładuję hub...",
-                    Duration = 8
-                })
+                pcall(function() writefile(KeyFile, Token) end)
+                Rayfield:Notify({Title = "Sukces!", Content = "Klucz poprawny! Ładowanie...", Duration = 3})
                 
-                pcall(function()
-                    writefile(KeyFile, Token)
-                end)
-                
-                KeyTab:CreateLabel("✅ Klucz zaakceptowany! Hub ładuje się...")
-                LoadMainMenu()
+                -- Klucz poprawny -> Niszczymy okno z kluczem i ładujemy główny hub!
+                Rayfield:Destroy()
+                task.wait(0.2)
+                LoadMainWindow(currentTheme)
             else
-                Rayfield:Notify({
-                    Title = "Błąd",
-                    Content = "Nieprawidłowy lub expired klucz! Spróbuj ponownie.",
-                    Duration = 8
-                })
+                Rayfield:Notify({Title = "Błąd", Content = "Nieprawidłowy klucz!", Duration = 5})
             end
         end
     })
