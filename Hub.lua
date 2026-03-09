@@ -199,7 +199,7 @@ ServerTab:CreateButton({
 
 -- MISC & CREDITS
 local SettingsTab = Window:CreateTab("Settings", 4483362458)
-SettingsTab:CreateSection("Quantum X Corp")
+SettingsTab:CreateSection("Quantum X")
 
 SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
 SettingsTab:CreateLabel("Developed by Quantum X Team")
