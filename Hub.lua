@@ -112,7 +112,7 @@ local function LoadMainWindow()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
     else
         -- Jeśli inna gra, odpalasz zwykły Hub, tak jak miałeś w starym kodzie
-        -- (tutaj kod Twojego uniwersalnego huba z poprzednich wiadomości)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua"))() -- (tutaj kod Twojego uniwersalnego huba z poprzednich wiadomości)
     end
     end
     
