@@ -40,6 +40,85 @@ local function CheckKey(Token)
     end
 end
 
+-- === LOGIKA KEY SYSTEM ===
+local SavedKey = nil
+local KeyFile = "QuantumX_Key.txt"
+
+pcall(function()
+    if isfile and isfile(KeyFile) then
+        SavedKey = readfile(KeyFile)
+    end
+end)
+
+local KeyValid = false
+if SavedKey then
+    KeyValid = CheckKey(SavedKey)
+end
+
+if KeyValid then
+    Rayfield:Notify({
+        Title = "Auto-Login",
+        Content = "Zapisany klucz ważny – hub załadowany automatycznie!",
+        Duration = 8
+    })
+    LoadMainMenu()
+else
+    if SavedKey then
+        pcall(function() delfile(KeyFile) end)
+    end
+    
+    local KeyTab = Window:CreateTab("Key System", nil)
+
+    KeyTab:CreateLabel("Klucz ważny 24h – przejdź checkpointy jak w Delta!")
+    KeyTab:CreateLabel("Po ukończeniu kroków strona auto wygeneruje klucz – skopiuj i wklej poniżej.")
+
+    KeyTab:CreateButton({
+        Name = "Otwórz checkpointy (Get Key)",
+        Callback = function()
+            setclipboard("https://work.ink/2dRx/key-system")
+            Rayfield:Notify({
+                Title = "Skopiowano!",
+                Content = "Wklej w przeglądarkę i ukończ WSZYSTKIE kroki.\nPo zakończeniu skopiuj klucz i wklej tutaj.",
+                Duration = 15
+            })
+        end
+    })
+
+    KeyTab:CreateInput({
+        Name = "Wklej klucz/token tutaj",
+        PlaceholderText = "np. abc123-def456-ghi789",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Token)
+            if Token == "" then
+                Rayfield:Notify({Title = "Błąd", Content = "Wklej klucz!", Duration = 5})
+                return
+            end
+            
+            if CheckKey(Token) then
+                Rayfield:Notify({
+                    Title = "Sukces!",
+                    Content = "Klucz poprawny! Zapisuję i ładuję hub...",
+                    Duration = 8
+                })
+                
+                pcall(function()
+                    writefile(KeyFile, Token)
+                end)
+                
+                KeyTab:CreateLabel("✅ Klucz zaakceptowany! Hub ładuje się...")
+                LoadMainMenu()
+            else
+                Rayfield:Notify({
+                    Title = "Błąd",
+                    Content = "Nieprawidłowy lub expired klucz! Spróbuj ponownie.",
+                    Duration = 8
+                })
+            end
+        end
+    })
+end
+
+
 -- Zmienne dla funkcji
 local speedOn = false
 local walkSpeedValue = 16
@@ -226,80 +305,3 @@ SettingsTab:CreateButton({
 })
 
 Rayfield:LoadConfiguration()
--- === LOGIKA KEY SYSTEM ===
-local SavedKey = nil
-local KeyFile = "QuantumX_Key.txt"
-
-pcall(function()
-    if isfile and isfile(KeyFile) then
-        SavedKey = readfile(KeyFile)
-    end
-end)
-
-local KeyValid = false
-if SavedKey then
-    KeyValid = CheckKey(SavedKey)
-end
-
-if KeyValid then
-    Rayfield:Notify({
-        Title = "Auto-Login",
-        Content = "Zapisany klucz ważny – hub załadowany automatycznie!",
-        Duration = 8
-    })
-    LoadMainMenu()
-else
-    if SavedKey then
-        pcall(function() delfile(KeyFile) end)
-    end
-    
-    local KeyTab = Window:CreateTab("Key System", nil)
-
-    KeyTab:CreateLabel("Klucz ważny 24h – przejdź checkpointy jak w Delta!")
-    KeyTab:CreateLabel("Po ukończeniu kroków strona auto wygeneruje klucz – skopiuj i wklej poniżej.")
-
-    KeyTab:CreateButton({
-        Name = "Otwórz checkpointy (Get Key)",
-        Callback = function()
-            setclipboard("https://work.ink/2dRx/key-system")
-            Rayfield:Notify({
-                Title = "Skopiowano!",
-                Content = "Wklej w przeglądarkę i ukończ WSZYSTKIE kroki.\nPo zakończeniu skopiuj klucz i wklej tutaj.",
-                Duration = 15
-            })
-        end
-    })
-
-    KeyTab:CreateInput({
-        Name = "Wklej klucz/token tutaj",
-        PlaceholderText = "np. abc123-def456-ghi789",
-        RemoveTextAfterFocusLost = false,
-        Callback = function(Token)
-            if Token == "" then
-                Rayfield:Notify({Title = "Błąd", Content = "Wklej klucz!", Duration = 5})
-                return
-            end
-            
-            if CheckKey(Token) then
-                Rayfield:Notify({
-                    Title = "Sukces!",
-                    Content = "Klucz poprawny! Zapisuję i ładuję hub...",
-                    Duration = 8
-                })
-                
-                pcall(function()
-                    writefile(KeyFile, Token)
-                end)
-                
-                KeyTab:CreateLabel("✅ Klucz zaakceptowany! Hub ładuje się...")
-                LoadMainMenu()
-            else
-                Rayfield:Notify({
-                    Title = "Błąd",
-                    Content = "Nieprawidłowy lub expired klucz! Spróbuj ponownie.",
-                    Duration = 8
-                })
-            end
-        end
-    })
-end
