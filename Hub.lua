@@ -18,15 +18,14 @@ local noclipOn = false
 -- FtF Vars
 local playerEspOn, computerEspOn, doorEspOn = false, false, false
 local autoComputer, autoDoor, autoSave, autoCapture = false, false, false, false
-local noPCError = false
 local isEvading, savedPos = false, nil
 local safeHeight = 550 
-local evadeDistance = 50
+local evadeDistance = 50 -- Distance from beast to trigger evasion
 
 -- === UTILITIES ===
 local function getBeast()
     for _, p in pairs(Players:GetPlayers()) do
-        if p \~= lp and p.Character then
+        if p ~= lp and p.Character then
             if p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer")) then
                 return p.Character
             end
@@ -39,12 +38,10 @@ local function getNearest(name, isPlayer)
     local nearest, dist = nil, math.huge
     if not lp.Character or not lp.Character:FindFirstChild("HumanoidRootPart") then return nil end
     
-    local myPos = lp.Character.HumanoidRootPart.Position
-    
     if isPlayer then
         for _, p in pairs(Players:GetPlayers()) do
-            if p \~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                local d = (p.Character.HumanoidRootPart.Position - myPos).Magnitude
+            if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local d = (p.Character.HumanoidRootPart.Position - lp.Character.HumanoidRootPart.Position).Magnitude
                 if d < dist then dist = d; nearest = p.Character end
             end
         end
@@ -53,7 +50,7 @@ local function getNearest(name, isPlayer)
             if v:IsA("Model") and v.Name == name then
                 local p = v:FindFirstChild("ComputerPart") or v:FindFirstChildWhichIsA("BasePart")
                 if p then
-                    local d = (p.Position - myPos).Magnitude
+                    local d = (p.Position - lp.Character.HumanoidRootPart.Position).Magnitude
                     if d < dist then dist = d; nearest = v end
                 end
             end
@@ -62,26 +59,7 @@ local function getNearest(name, isPlayer)
     return nearest
 end
 
--- === ANTI-KICK HOOK (No PC Error) ===
-local function enableNoPCError()
-    if noPCError then return end
-    noPCError = true
-    pcall(function()
-        local mt = getrawmetatable(game)
-        local oldNamecall = mt.__namecall
-        setreadonly(mt, false)
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            if method == "Kick" and self == lp then
-                return -- blokujemy kick
-            end
-            return oldNamecall(self, ...)
-        end)
-        setreadonly(mt, true)
-    end)
-end
-
--- === CORE MOVEMENT ===
+-- === CORE LOGIC ===
 RunService.Stepped:Connect(function()
     if lp.Character then
         local hum = lp.Character:FindFirstChild("Humanoid")
@@ -94,50 +72,51 @@ RunService.Stepped:Connect(function()
                 if v:IsA("BasePart") then v.CanCollide = false end
             end
         end
-        if isEvading and lp.Character:FindFirstChild("HumanoidRootPart") then 
+        if isEvading then 
             lp.Character.HumanoidRootPart.Velocity = Vector3.new(0,0,0) 
         end
     end
 end)
 
--- === FtF MAIN LOOP ===
+-- FtF Specific Loop
 if isFtF then
     task.spawn(function()
-        while task.wait(0.08) do  -- szybszy tick dla auto-capture
+        while task.wait(0.3) do
             local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
             if not hrp then continue end
 
-            -- ESP
+            -- 1. ESP Logic
             for _, p in pairs(Players:GetPlayers()) do
-                if p \~= lp and p.Character then
+                if p ~= lp and p.Character then
                     local hl = p.Character:FindFirstChild("QuantumESP")
                     if playerEspOn then
                         if not hl then hl = Instance.new("Highlight", p.Character); hl.Name = "QuantumESP" end
-                        local isBeast = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
-                        hl.FillColor = isBeast and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
-                        hl.OutlineColor = Color3.fromRGB(220,220,255)
+                        local beast = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
+                        hl.FillColor = beast and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
                     elseif hl then hl:Destroy() end
                 end
             end
 
             for _, v in pairs(workspace:GetDescendants()) do
                 if v:IsA("Model") then
-                    if v.Name == "ComputerTable" and computerEspOn then
-                        local hl = v:FindFirstChild("QuantumESP") or Instance.new("Highlight", v)
-                        hl.Name = "QuantumESP"
-                        hl.FillColor = Color3.fromRGB(0, 255, 255)
-                    elseif v.Name == "ExitDoor" and doorEspOn then
-                        local hl = v:FindFirstChild("QuantumESP") or Instance.new("Highlight", v)
-                        hl.Name = "QuantumESP"
-                        hl.FillColor = Color3.fromRGB(255, 215, 0)
+                    if v.Name == "ComputerTable" then
+                        local hl = v:FindFirstChild("QuantumESP")
+                        if computerEspOn then
+                            if not hl then hl = Instance.new("Highlight", v); hl.Name = "QuantumESP"; hl.FillColor = Color3.fromRGB(0, 255, 255) end
+                        elseif hl then hl:Destroy() end
+                    elseif v.Name == "ExitDoor" then
+                        local hl = v:FindFirstChild("QuantumESP")
+                        if doorEspOn then
+                            if not hl then hl = Instance.new("Highlight", v); hl.Name = "QuantumESP"; hl.FillColor = Color3.fromRGB(255, 255, 0) end
+                        elseif hl then hl:Destroy() end
                     end
                 end
             end
 
-            -- Auto Computer / Door / Save + Smart Evasion
+            -- 2. Smart Teleport & Evasion
             if autoComputer or autoDoor or autoSave then
                 local beast = getBeast()
-                local bPos = beast and beast.HumanoidRootPart and beast.HumanoidRootPart.Position
+                local bPos = beast and beast:FindFirstChild("HumanoidRootPart") and beast.HumanoidRootPart.Position
                 
                 local target = nil
                 if autoSave then target = getNearest("Tube", false) end
@@ -147,17 +126,21 @@ if isFtF then
                 if target then
                     local tPart = target:FindFirstChild("ComputerPart") or target:FindFirstChildWhichIsA("BasePart")
                     if tPart then
-                        local beastNearMe    = bPos and (bPos - hrp.Position).Magnitude < evadeDistance
+                        local beastNearMe = bPos and (bPos - hrp.Position).Magnitude < evadeDistance
                         local beastNearTarget = bPos and (bPos - tPart.Position).Magnitude < evadeDistance
                         
                         if beastNearMe or beastNearTarget then
-                            if not isEvading then isEvading = true end
+                            if not isEvading then
+                                savedPos = hrp.CFrame
+                                isEvading = true
+                            end
                             hrp.CFrame = CFrame.new(hrp.Position.X, safeHeight, hrp.Position.Z)
                         else
                             isEvading = false
-                            hrp.CFrame = tPart.CFrame * CFrame.new(0, 3, -4)  -- lekko z boku/tyłu
+                            -- FIX: Y-Offset +2 to prevent teleporting under floor
+                            hrp.CFrame = tPart.CFrame * CFrame.new(0, 2, 4)
                             
-                            local remote = ReplicatedStorage:WaitForChild("RemoteEvent", 5)
+                            local remote = ReplicatedStorage:FindFirstChild("RemoteEvent")
                             if remote and autoComputer then
                                 remote:FireServer("Input", "Action", true)
                                 remote:FireServer("SetPlayerStatus", 1)
@@ -167,21 +150,14 @@ if isFtF then
                 end
             end
             
-            -- Auto-Capture – teleport + SPAM swing
+            -- 3. Auto-Capture (Beast)
             if autoCapture then
                 local isBeast = lp.Character:FindFirstChild("Hammer") or (lp.Backpack and lp.Backpack:FindFirstChild("Hammer"))
                 if isBeast then
-                    local victim = getNearest(nil, true)
-                    if victim and victim:FindFirstChild("HumanoidRootPart") then
-                        -- Teleport tuż za plecami (negative Z = za plecami)
-                        hrp.CFrame = victim.HumanoidRootPart.CFrame * CFrame.new(0, 0, -1.8) * CFrame.Angles(0, math.pi, 0)
-                        
-                        local remote = ReplicatedStorage:WaitForChild("RemoteEvent", 3)
-                        if remote then
-                            -- Natychmiastowy swing + spam co tick (działa lepiej niż pojedynczy)
-                            remote:FireServer("Input", "Swing", true)
-                            -- Można dodać task.spawn z wait(0.1) i kolejnym swing jeśli chcesz jeszcze mocniej
-                        end
+                    local vic = getNearest(nil, true)
+                    if vic and vic:FindFirstChild("HumanoidRootPart") then
+                        hrp.CFrame = vic.HumanoidRootPart.CFrame * CFrame.new(0, 0, 2)
+                        ReplicatedStorage.RemoteEvent:FireServer("Input", "Swing", true)
                     end
                 end
             end
@@ -189,14 +165,11 @@ if isFtF then
     end)
 end
 
--- === UI ===
+-- === UI LOADING ===
 local function LoadMainWindow()
     local Window = Rayfield:CreateWindow({
-        Name = "Quantum X | " .. (isFtF and "Supreme FtF" or "Universal"),
-        LoadingTitle = "Quantum X",
-        LoadingSubtitle = "Supreme Edition",
-        Theme = "Amethyst",
-        ConfigurationSaving = { Enabled = false }
+        Name = "Quantum X | " .. (isFtF and "Flee The Facility" or "Universal"),
+        Theme = "Amethyst"
     })
 
     if isFtF then
@@ -205,58 +178,48 @@ local function LoadMainWindow()
         FtFTab:CreateToggle({Name = "Auto-Computer (Smart)", CurrentValue = false, Callback = function(v) autoComputer = v end})
         FtFTab:CreateToggle({Name = "Auto-Save (Tubes)", CurrentValue = false, Callback = function(v) autoSave = v end})
         FtFTab:CreateToggle({Name = "Auto-Exit Door", CurrentValue = false, Callback = function(v) autoDoor = v end})
-        
-        FtFTab:CreateSection("Beast")
-        FtFTab:CreateToggle({Name = "Auto-Capture + Instant Hammer", CurrentValue = false, Callback = function(v) autoCapture = v end})
+        FtFTab:CreateToggle({Name = "Auto-Capture (Beast)", CurrentValue = false, Callback = function(v) autoCapture = v end})
 
-        FtFTab:CreateSection("Anti-Detection")
-        FtFTab:CreateToggle({Name = "No PC Error (Anti-Kick)", CurrentValue = false, Callback = function(v)
-            if v then enableNoPCError() end
-        end})
-
-        local EspTab = Window:CreateTab("Visuals")
-        EspTab:CreateToggle({Name = "Player ESP", Callback = function(v) playerEspOn = v end})
-        EspTab:CreateToggle({Name = "Computer ESP", Callback = function(v) computerEspOn = v end})
-        EspTab:CreateToggle({Name = "Door ESP", Callback = function(v) doorEspOn = v end})
+        local EspTab = Window:CreateTab("Visuals", 4483362458)
+        EspTab:CreateToggle({Name = "Player ESP", CurrentValue = false, Callback = function(v) playerEspOn = v end})
+        EspTab:CreateToggle({Name = "Computer ESP", CurrentValue = false, Callback = function(v) computerEspOn = v end})
+        EspTab:CreateToggle({Name = "Door ESP", CurrentValue = false, Callback = function(v) doorEspOn = v end})
     end
 
-    local PlayerTab = Window:CreateTab("Player")
+    local PlayerTab = Window:CreateTab("Player", 4483362458)
     PlayerTab:CreateToggle({Name = "WalkSpeed", Callback = function(v) speedOn = v end})
-    PlayerTab:CreateSlider({Name = "Speed Value", Range = {16, 300}, Increment = 1, CurrentValue = 16, Callback = function(v) walkSpeedValue = v end})
+    PlayerTab:CreateSlider({Name = "Speed", Range = {16, 200}, Increment = 1, CurrentValue = 16, Callback = function(v) walkSpeedValue = v end})
     PlayerTab:CreateToggle({Name = "Noclip", Callback = function(v) noclipOn = v end})
 
-    local ServerTab = Window:CreateTab("Server")
+    local ServerTab = Window:CreateTab("Server", 4483362458)
     ServerTab:CreateButton({Name = "Rejoin", Callback = function() TeleportService:Teleport(game.PlaceId, lp) end})
     ServerTab:CreateButton({Name = "Server Hop", Callback = function() TeleportService:Teleport(game.PlaceId) end})
     ServerTab:CreateButton({Name = "Destroy UI", Callback = function() Rayfield:Destroy(); getgenv().QuantumXLoaded = false end})
 
-    local CreditsTab = Window:CreateTab("Credits")
-    CreditsTab:CreateLabel("Quantum X – Unseen. Supreme. Unstoppable.")
+    local ScriptsTab = Window:CreateTab("Scripts", 4483362458)
+    ScriptsTab:CreateButton({Name = "Infinite Yield", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end})
+    ScriptsTab:CreateButton({Name = "Dex Explorer", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() end})
+
+    local CreditsTab = Window:CreateTab("Credits", 4483362458)
+    CreditsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
+    CreditsTab:CreateLabel("Developed by Quantum X Team")
 end
 
--- === KEY SYSTEM (bez zmian) ===
+-- === KEY SYSTEM ===
 local function CheckKey(Token)
-    local s, r = pcall(game.HttpGet, game, "https://work.ink/_api/v2/token/isValid/" .. Token)
-    return s and r:find('"valid":true') 
+    local Success, Response = pcall(function() return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token) end)
+    return Success and Response:find('"valid":true') ~= nil
 end
 
 local KeyFile = "QuantumX_Key.txt"
-local saved = isfile and isfile(KeyFile) and readfile(KeyFile)
+local SavedKey = (isfile and isfile(KeyFile)) and readfile(KeyFile) or nil
+local inputKey = ""
 
-if saved and CheckKey(saved) then
-    LoadMainWindow()
-else
-    local kw = Rayfield:CreateWindow({Name = "Quantum X | Key", Theme = "Amethyst"})
-    local kt = kw:CreateTab("Key")
-    kt:CreateButton({Name = "Copy Link", Callback = function() setclipboard("https://work.ink/2dRx/key-system") end})
-    kt:CreateInput({Name = "Key", Callback = function(v) inputKey = v end})
-    kt:CreateButton({Name = "Submit", Callback = function()
-        if CheckKey(inputKey) then
-            if writefile then writefile(KeyFile, inputKey) end
-            kw:Destroy()
-            LoadMainWindow()
-        else
-            Rayfield:Notify({Title="Błąd", Content="Nieprawidłowy klucz!"})
-        end
+if SavedKey and CheckKey(SavedKey) then LoadMainWindow() else
+    local KeyWin = Rayfield:CreateWindow({Name = "Quantum X | Key System", Theme = "Amethyst"})
+    local KeyTab = KeyWin:CreateTab("Verification")
+    KeyTab:CreateInput({Name = "Enter Key", Callback = function(v) inputKey = v end})
+    KeyTab:CreateButton({Name = "Verify", Callback = function()
+        if CheckKey(inputKey) then writefile(KeyFile, inputKey); KeyWin:Destroy(); LoadMainWindow() end
     end})
 end
