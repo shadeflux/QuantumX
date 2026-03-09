@@ -16,36 +16,13 @@ local jumpPowerValue = 50
 local spectating = false
 local targetPlayer = nil
 
--- Pętle funkcjonalne
-task.spawn(function()
-    while true do
-        local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
-        if h then
-            if speedOn then h.WalkSpeed = walkSpeedValue end
-            if jumpOn then h.JumpPower = jumpPowerValue end
-        end
-        task.wait(0.1)
-    end
-end)
-
-task.spawn(function()
-    while true do
-        if spectating and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = targetPlayer.Character.Humanoid
-        elseif not spectating and lp.Character and lp.Character:FindFirstChild("Humanoid") then
-            workspace.CurrentCamera.CameraSubject = lp.Character.Humanoid
-        end
-        task.wait(0.1)
-    end
-end)
-
 -- === GŁÓWNA FUNKCJA ŁADUJĄCA INTERFEJS ===
 local function LoadMainWindow()
     local Window = Rayfield:CreateWindow({
         Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
         LoadingTitle = "Quantum X Hub",
         LoadingSubtitle = "by Quantum X Corp",
-        Theme = "Amethyst", 
+        Theme = "Amethyst",
         ConfigurationSaving = { Enabled = true, FolderName = "QuantumX", FileName = "Config" },
         Discord = { Enabled = true, Invite = "XHEAeKSx34", RememberJoins = true },
         KeySystem = false
@@ -72,7 +49,7 @@ local function LoadMainWindow()
     end})
 
     MainTab:CreateSection("Teleportation & Spectate")
-    MainTab:CreateInput({Name = "Target Player Name", PlaceholderText = "Username...", Callback = function(Text)
+    MainTab:CreateInput({Name = "Target Player Name", PlaceholderText = "Wpisz nazwę...", Callback = function(Text)
         for _, v in pairs(Players:GetPlayers()) do
             if v.Name:lower():find(Text:lower()) then targetPlayer = v break end
         end
@@ -96,15 +73,15 @@ local function LoadMainWindow()
 
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
     SettingsTab:CreateSection("System & Credits")
-    SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
-    SettingsTab:CreateLabel("Developed by Quantum X Team")
+    SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable. | Developed by Quantum X Team") -- Slogan w jednej linii
+    SettingsTab:CreateDivider() -- Separator
     SettingsTab:CreateButton({Name = "Copy Discord Link", Callback = function() setclipboard("https://discord.gg/XHEAeKSx34") end})
     SettingsTab:CreateButton({Name = "Destroy UI", Callback = function() Rayfield:Destroy() getgenv().QuantumXLoaded = false end})
 
     Rayfield:LoadConfiguration()
 end
 
--- === LOGIKA KEY ===
+-- === LOGIKA KEY SYSTEM ===
 local function CheckKey(Token)
     local Success, Response = pcall(function() return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token) end)
     return Success and Response:find('"valid":true') ~= nil
@@ -112,16 +89,23 @@ end
 
 local KeyFile = "QuantumX_Key.txt"
 local SavedKey = (isfile and isfile(KeyFile)) and readfile(KeyFile) or nil
+local inputKey = "" -- Zmienna do przechowywania wpisanego klucza
 
 if SavedKey and CheckKey(SavedKey) then
     LoadMainWindow()
 else
     local KeyWindow = Rayfield:CreateWindow({Name = "Quantum X | Verification", Theme = "Amethyst", KeySystem = false})
     local KeyTab = KeyWindow:CreateTab("Key System", nil)
-    KeyTab:CreateButton({Name = "Get Key", Callback = function() setclipboard("https://work.ink/2dRx/key-system") end})
-    KeyTab:CreateInput({Name = "Wklej klucz", Callback = function(Token)
-        if CheckKey(Token) then
-            writefile(KeyFile, Token)
+    
+    KeyTab:CreateButton({Name = "Otwórz checkpointy (Get Key)", Callback = function() setclipboard("https://work.ink/2dRx/key-system") end})
+    
+    KeyTab:CreateInput({Name = "Wklej klucz", PlaceholderText = "Wpisz tutaj klucz...", Callback = function(Value) 
+        inputKey = Value 
+    end})
+    
+    KeyTab:CreateButton({Name = "Zatwierdź klucz", Callback = function()
+        if CheckKey(inputKey) then
+            writefile(KeyFile, inputKey)
             Rayfield:Destroy()
             LoadMainWindow()
         else
