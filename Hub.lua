@@ -70,7 +70,7 @@ local function LoadMainWindow()
         jumpPowerValue = Value 
         if jumpOn and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.JumpPower = Value end
     end})
-
+    MainTab:CreateDivider()
     MainTab:CreateSection("Teleportation & Spectate")
     MainTab:CreateInput({Name = "Target Player Name", PlaceholderText = "Wpisz nazwę...", Callback = function(Text)
         for _, v in pairs(Players:GetPlayers()) do
@@ -83,7 +83,7 @@ local function LoadMainWindow()
         end
     end})
     MainTab:CreateToggle({Name = "Spectate Player", CurrentValue = spectating, Callback = function(Value) spectating = Value end})
-
+    MainTab:CreateDivider()
     MainTab:CreateSection("Server Utils")
     MainTab:CreateButton({Name = "Rejoin Server", Callback = function() TeleportService:Teleport(game.PlaceId, lp) end})
     MainTab:CreateButton({Name = "Server Hop", Callback = function()
