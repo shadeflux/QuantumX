@@ -8,7 +8,7 @@ local Http = game:GetService("HttpService")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Globalne zmienne dla funkcji
+-- Globalne zmienne
 local speedOn = false
 local walkSpeedValue = 16
 local jumpOn = false
@@ -16,7 +16,7 @@ local jumpPowerValue = 50
 local spectating = false
 local targetPlayer = nil
 
--- Pętle funkcjonalne (działają w tle)
+-- Pętle funkcjonalne
 task.spawn(function()
     while true do
         local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
@@ -45,28 +45,31 @@ local function LoadMainWindow()
         Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
         LoadingTitle = "Quantum X Hub",
         LoadingSubtitle = "by Quantum X Corp",
-        Theme = "Amethyst", -- Motyw ustawiony na stałe
-        ConfigurationSaving = {
-            Enabled = true,
-            FolderName = "QuantumX",
-            FileName = "Config"
-        },
-        Discord = {
-            Enabled = true,
-            Invite = "XHEAeKSx34",
-            RememberJoins = true 
-        },
+        Theme = "Amethyst", 
+        ConfigurationSaving = { Enabled = true, FolderName = "QuantumX", FileName = "Config" },
+        Discord = { Enabled = true, Invite = "XHEAeKSx34", RememberJoins = true },
         KeySystem = false
     })
 
-    -- ZAKŁADKA FEATURES (Wszystkie funkcje w jednej)
     local MainTab = Window:CreateTab("Features", 4483362458)
     
     MainTab:CreateSection("Movement")
-    MainTab:CreateToggle({Name = "Enable WalkSpeed", CurrentValue = speedOn, Flag = "SpeedToggle", Callback = function(Value) speedOn = Value end})
-    MainTab:CreateSlider({Name = "WalkSpeed Value", Range = {16, 500}, Increment = 1, CurrentValue = walkSpeedValue, Callback = function(Value) walkSpeedValue = Value end})
-    MainTab:CreateToggle({Name = "Enable JumpPower", CurrentValue = jumpOn, Flag = "JumpToggle", Callback = function(Value) jumpOn = Value end})
-    MainTab:CreateSlider({Name = "JumpPower Value", Range = {50, 500}, Increment = 1, CurrentValue = jumpPowerValue, Callback = function(Value) jumpPowerValue = Value end})
+    MainTab:CreateToggle({Name = "Enable WalkSpeed", CurrentValue = speedOn, Flag = "SpeedToggle", Callback = function(Value) 
+        speedOn = Value 
+        if not Value and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = 16 end
+    end})
+    MainTab:CreateSlider({Name = "WalkSpeed Value", Range = {16, 500}, Increment = 1, CurrentValue = walkSpeedValue, Callback = function(Value) 
+        walkSpeedValue = Value 
+        if speedOn and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.WalkSpeed = Value end
+    end})
+    MainTab:CreateToggle({Name = "Enable JumpPower", CurrentValue = jumpOn, Flag = "JumpToggle", Callback = function(Value) 
+        jumpOn = Value 
+        if not Value and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.JumpPower = 50 end
+    end})
+    MainTab:CreateSlider({Name = "JumpPower Value", Range = {50, 500}, Increment = 1, CurrentValue = jumpPowerValue, Callback = function(Value) 
+        jumpPowerValue = Value 
+        if jumpOn and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.JumpPower = Value end
+    end})
 
     MainTab:CreateSection("Teleportation & Spectate")
     MainTab:CreateInput({Name = "Target Player Name", PlaceholderText = "Username...", Callback = function(Text)
@@ -91,9 +94,7 @@ local function LoadMainWindow()
         end
     end})
 
-    -- ZAKŁADKA SETTINGS (Tu są przyciski z Credits)
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
-    
     SettingsTab:CreateSection("System & Credits")
     SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
     SettingsTab:CreateLabel("Developed by Quantum X Team")
@@ -103,7 +104,7 @@ local function LoadMainWindow()
     Rayfield:LoadConfiguration()
 end
 
--- === LOGIKA KEY SYSTEM ===
+-- === LOGIKA KEY ===
 local function CheckKey(Token)
     local Success, Response = pcall(function() return game:HttpGet("https://work.ink/_api/v2/token/isValid/" .. Token) end)
     return Success and Response:find('"valid":true') ~= nil
