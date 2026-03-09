@@ -8,7 +8,7 @@ local Http = game:GetService("HttpService")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Globalne zmienne
+-- === GLOBALNE ZMIENNE ===
 local speedOn = false
 local walkSpeedValue = 16
 local jumpOn = false
@@ -16,7 +16,13 @@ local jumpPowerValue = 50
 local spectating = false
 local targetPlayer = nil
 
--- Pętle funkcjonalne
+-- Zmienne ESP
+local playerEspOn = false
+local computerEspOn = false
+local doorEspOn = false
+
+-- === PĘTLE FUNKCJONALNE ===
+-- 1. Szybkość i Skok
 task.spawn(function()
     while true do
         local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
@@ -28,6 +34,7 @@ task.spawn(function()
     end
 end)
 
+-- 2. Spectate
 task.spawn(function()
     while true do
         if spectating and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
@@ -38,6 +45,64 @@ task.spawn(function()
         task.wait(0.1)
     end
 end)
+
+-- 3. System ESP (Flee the Facility)
+task.spawn(function()
+    while true do
+        -- ESP Graczy / Bestii
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= lp and p.Character then
+                local hl = p.Character:FindFirstChild("QuantumESP")
+                if playerEspOn then
+                    -- W FtF bestia zazwyczaj ma w ekwipunku lub ręce "Hammer" (młot)
+                    local isBeast = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
+                    
+                    if not hl then
+                        hl = Instance.new("Highlight")
+                        hl.Name = "QuantumESP"
+                        hl.FillTransparency = 0.5
+                        hl.OutlineTransparency = 0.2
+                        hl.Parent = p.Character
+                    end
+                    -- Bestia = Czerwony, Gracz = Zielony
+                    hl.FillColor = isBeast and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
+                    hl.OutlineColor = isBeast and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
+                else
+                    if hl then hl:Destroy() end
+                end
+            end
+        end
+
+        -- Funkcja pomocnicza do ESP obiektów (Komputery i Drzwi)
+        local function handleObjEsp(objName, color, isOn)
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") and obj.Name == objName then
+                    local hl = obj:FindFirstChild("QuantumESP")
+                    if isOn then
+                        if not hl then
+                            hl = Instance.new("Highlight")
+                            hl.Name = "QuantumESP"
+                            hl.FillColor = color
+                            hl.OutlineColor = color
+                            hl.FillTransparency = 0.5
+                            hl.OutlineTransparency = 0.2
+                            hl.Parent = obj
+                        end
+                    else
+                        if hl then hl:Destroy() end
+                    end
+                end
+            end
+        end
+
+        -- Niebieski dla komputerów, Żółty dla drzwi wyjściowych
+        handleObjEsp("ComputerTable", Color3.fromRGB(0, 200, 255), computerEspOn)
+        handleObjEsp("ExitDoor", Color3.fromRGB(255, 255, 0), doorEspOn)
+
+        task.wait(1) -- Odświeżamy co 1 sekundę, żeby nie lagować gry
+    end
+end)
+
 
 -- === GŁÓWNA FUNKCJA ŁADUJĄCA INTERFEJS ===
 local function LoadMainWindow()
@@ -51,6 +116,15 @@ local function LoadMainWindow()
         KeySystem = false
     })
 
+    -- ZAKŁADKA 1: Flee the Facility
+    local FtfTab = Window:CreateTab("Flee the Facility", 4483362458)
+    
+    FtfTab:CreateSection("Visuals (ESP)")
+    FtfTab:CreateToggle({Name = "Enable Player & Beast ESP", CurrentValue = playerEspOn, Flag = "EspPlayer", Callback = function(Value) playerEspOn = Value end})
+    FtfTab:CreateToggle({Name = "Enable Computers ESP", CurrentValue = computerEspOn, Flag = "EspComputer", Callback = function(Value) computerEspOn = Value end})
+    FtfTab:CreateToggle({Name = "Enable Exit Doors ESP", CurrentValue = doorEspOn, Flag = "EspDoor", Callback = function(Value) doorEspOn = Value end})
+
+    -- ZAKŁADKA 2: Universal Features
     local MainTab = Window:CreateTab("Features", 4483362458)
     
     MainTab:CreateSection("Movement")
@@ -70,7 +144,7 @@ local function LoadMainWindow()
         jumpPowerValue = Value 
         if jumpOn and lp.Character and lp.Character:FindFirstChild("Humanoid") then lp.Character.Humanoid.JumpPower = Value end
     end})
-    MainTab:CreateDivider()
+
     MainTab:CreateSection("Teleportation & Spectate")
     MainTab:CreateInput({Name = "Target Player Name", PlaceholderText = "Wpisz nazwę...", Callback = function(Text)
         for _, v in pairs(Players:GetPlayers()) do
@@ -83,7 +157,7 @@ local function LoadMainWindow()
         end
     end})
     MainTab:CreateToggle({Name = "Spectate Player", CurrentValue = spectating, Callback = function(Value) spectating = Value end})
-    MainTab:CreateDivider()
+
     MainTab:CreateSection("Server Utils")
     MainTab:CreateButton({Name = "Rejoin Server", Callback = function() TeleportService:Teleport(game.PlaceId, lp) end})
     MainTab:CreateButton({Name = "Server Hop", Callback = function()
@@ -94,12 +168,34 @@ local function LoadMainWindow()
         end
     end})
 
+    -- ZAKŁADKA 3: Hub Scripts (Skrypty Zewnętrzne)
+    local ScriptsTab = Window:CreateTab("Scripts", 4483362458)
+    
+    ScriptsTab:CreateSection("Exploiting Tools")
+    ScriptsTab:CreateButton({Name = "Load Infinite Yield", Callback = function() 
+        loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() 
+    end})
+    ScriptsTab:CreateButton({Name = "Load Dex Explorer", Callback = function() 
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() 
+    end})
+    ScriptsTab:CreateButton({Name = "Load SimpleSpy", Callback = function() 
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))() 
+    end})
+
+    -- ZAKŁADKA 4: Settings
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
+    
     SettingsTab:CreateSection("System & Credits")
     SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable. | Developed by Quantum X Team")
     SettingsTab:CreateDivider()
     SettingsTab:CreateButton({Name = "Copy Discord Link", Callback = function() setclipboard("https://discord.gg/XHEAeKSx34") end})
-    SettingsTab:CreateButton({Name = "Destroy UI", Callback = function() Rayfield:Destroy() getgenv().QuantumXLoaded = false end})
+    SettingsTab:CreateButton({Name = "Destroy UI", Callback = function() 
+        -- Niszczymy UI i czyścimy wszystkie ESP przed wyjściem
+        playerEspOn = false; computerEspOn = false; doorEspOn = false
+        task.wait(1.5) -- Czekamy aż pętla ESP oczyści mapę
+        Rayfield:Destroy() 
+        getgenv().QuantumXLoaded = false 
+    end})
 
     Rayfield:LoadConfiguration()
 end
