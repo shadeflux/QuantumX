@@ -106,7 +106,6 @@ end)
 
 -- === GŁÓWNA FUNKCJA ŁADUJĄCA INTERFEJS ===
 local function LoadMainWindow()
-    local function LoadMainWindow()
     if game.PlaceId == 893973440 then
         -- Jeśli to Flee the Facility, załaduj ten nowy plik
         loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
