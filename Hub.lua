@@ -8,16 +8,15 @@ local Http = game:GetService("HttpService")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Globalne zmienne funkcji, aby działały niezależnie od restartu UI
+-- Globalne zmienne
 local speedOn = false
 local walkSpeedValue = 16
 local jumpOn = false
 local jumpPowerValue = 50
 local spectating = false
 local targetPlayer = nil
-local currentTheme = "Default" -- Domyślny motyw
 
--- Pętla aktualizująca statystyki gracza (działa w tle)
+-- Pętla aktualizująca statystyki gracza
 task.spawn(function()
     while true do
         local h = lp.Character and lp.Character:FindFirstChild("Humanoid")
@@ -29,7 +28,7 @@ task.spawn(function()
     end
 end)
 
--- Pętla spectate (działa w tle)
+-- Pętla spectate
 task.spawn(function()
     while true do
         if spectating and targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") then
@@ -41,13 +40,13 @@ task.spawn(function()
     end
 end)
 
--- === GŁÓWNY INTERFEJS (BEZ ZAKŁADKI KEY) ===
-local function LoadMainWindow(themeName)
+-- === GŁÓWNY INTERFEJS ===
+local function LoadMainWindow()
     local Window = Rayfield:CreateWindow({
         Name = "Quantum X | Unseen. Unpatched. Unstoppable.",
         LoadingTitle = "Quantum X Hub",
         LoadingSubtitle = "by Quantum X Corp",
-        Theme = themeName,
+        Theme = "Amethyst", -- Ustawiony na stałe motyw Amethyst
         ConfigurationSaving = {
             Enabled = true,
             FolderName = "QuantumX",
@@ -63,9 +62,10 @@ local function LoadMainWindow(themeName)
 
     -- 1. ZAKŁADKA: WSZYSTKIE FUNKCJE
     local MainTab = Window:CreateTab("Features", 4483362458)
-    MainTab:CreateSection("All Modules")
-
-    -- Movement
+    
+    -- Sekcja Movement
+    MainTab:CreateSection("Movement")
+    
     MainTab:CreateToggle({
         Name = "Enable WalkSpeed",
         CurrentValue = speedOn,
@@ -114,7 +114,9 @@ local function LoadMainWindow(themeName)
         end,
     })
 
-    -- Teleportation
+    -- Sekcja Teleportation
+    MainTab:CreateSection("Teleportation & Spectate")
+    
     MainTab:CreateInput({
         Name = "Target Player Name",
         PlaceholderText = "Type username...",
@@ -150,7 +152,9 @@ local function LoadMainWindow(themeName)
         end,
     })
 
-    -- Server Utils
+    -- Sekcja Server Utils
+    MainTab:CreateSection("Server Utils")
+    
     MainTab:CreateButton({
         Name = "Rejoin Server",
         Callback = function()
@@ -176,25 +180,7 @@ local function LoadMainWindow(themeName)
 
     -- 2. ZAKŁADKA: USTAWIENIA I CREDITS
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
-    SettingsTab:CreateSection("UI Configuration")
-
-    SettingsTab:CreateDropdown({
-        Name = "UI Theme",
-        Options = {"Default", "AmberGlow", "Amethyst", "Bloom", "DarkBlue", "Green", "Light", "Ocean", "Serenity"},
-        CurrentOption = {currentTheme},
-        MultipleOptions = false,
-        Flag = "ThemeDropdown",
-        Callback = function(Options)
-            local selectedTheme = Options[1]
-            if selectedTheme ~= currentTheme then
-                currentTheme = selectedTheme
-                Rayfield:Destroy() -- Niszczy obecne UI
-                task.wait(0.1)
-                LoadMainWindow(currentTheme) -- Ładuje ponownie z nowym motywem
-            end
-        end,
-    })
-
+    
     SettingsTab:CreateSection("System & Credits")
 
     SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable.")
@@ -220,7 +206,7 @@ local function LoadMainWindow(themeName)
 end
 
 
--- === LOGIKA KEY SYSTEM (Tymczasowe Okno Logowania) ===
+-- === LOGIKA KEY SYSTEM ===
 local function CheckKey(Token)
     local Url = "https://work.ink/_api/v2/token/isValid/" .. Token
     local Success, Response = pcall(function() return game:HttpGet(Url) end)
@@ -235,17 +221,18 @@ pcall(function()
 end)
 
 if SavedKey and CheckKey(SavedKey) then
-    -- Jeśli klucz jest poprawny od razu przy starcie, pomiń Key System i ładuj główny Hub
-    LoadMainWindow(currentTheme)
+    -- Poprawny klucz przy starcie -> Ładujemy hub w motywie Amethyst
+    LoadMainWindow()
     Rayfield:Notify({Title = "Auto-Login", Content = "Zapisany klucz ważny!", Duration = 5})
 else
     if SavedKey then pcall(function() delfile(KeyFile) end) end
     
-    -- Tworzymy tymczasowe okno TYLKO dla Key Systemu
+    -- Okno logowania
     local KeyWindow = Rayfield:CreateWindow({
         Name = "Quantum X | Verification",
         LoadingTitle = "Checking Access...",
         LoadingSubtitle = "by Quantum X",
+        Theme = "Amethyst",
         KeySystem = false
     })
     
@@ -272,10 +259,10 @@ else
                 pcall(function() writefile(KeyFile, Token) end)
                 Rayfield:Notify({Title = "Sukces!", Content = "Klucz poprawny! Ładowanie...", Duration = 3})
                 
-                -- Klucz poprawny -> Niszczymy okno z kluczem i ładujemy główny hub!
+                -- Klucz poprawny -> Zamykamy okno weryfikacji i ładujemy pełny Hub
                 Rayfield:Destroy()
                 task.wait(0.2)
-                LoadMainWindow(currentTheme)
+                LoadMainWindow()
             else
                 Rayfield:Notify({Title = "Błąd", Content = "Nieprawidłowy klucz!", Duration = 5})
             end
