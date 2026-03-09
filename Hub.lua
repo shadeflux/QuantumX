@@ -6,6 +6,7 @@ local lp = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local Http = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -47,7 +48,23 @@ local function getNearest(objectName)
     return nearest
 end
 
--- === PĘTLE (MOVEMENT & FTF LOGIC) ===
+-- === AUTO SKILLCHECK (ZALICZANIE KOMPUTERA) ===
+-- Ta funkcja automatycznie odpowiada na eventy minigry w FtF
+task.spawn(function()
+    while task.wait() do
+        if autoComputer then
+            -- RemoteEvent odpowiedzialny za trafienie w białe pole (skillcheck)
+            local remote = ReplicatedStorage:FindFirstChild("RemoteEvent") or ReplicatedStorage:FindFirstChild("Events")
+            -- Uwaga: FtF często zmienia nazwy eventów, ten poniżej jest standardowy dla większości wersji:
+            pcall(function()
+                ReplicatedStorage.RemoteEvent:FireServer("SetPlayerStatus", 1) -- Status: Pracuje
+                ReplicatedStorage.RemoteEvent:FireServer("ComputerFinished", true) -- Próba wysłania sygnału sukcesu
+            end)
+        end
+    end
+end)
+
+-- === PĘTLE (MOVEMENT, ESP & FTF LOGIC) ===
 RunService.Stepped:Connect(function()
     if lp.Character then
         local h = lp.Character:FindFirstChild("Humanoid")
@@ -66,7 +83,7 @@ end)
 task.spawn(function()
     while task.wait(0.5) do
         if game.PlaceId == 893973440 then
-            -- Logika ESP
+            -- 1. ESP GRACZY I BESTII
             for _, p in pairs(Players:GetPlayers()) do
                 if p ~= lp and p.Character then
                     local hl = p.Character:FindFirstChild("QuantumESP")
@@ -74,20 +91,39 @@ task.spawn(function()
                         if not hl then hl = Instance.new("Highlight", p.Character); hl.Name = "QuantumESP" end
                         local isBeast = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
                         hl.FillColor = isBeast and Color3.fromRGB(255,0,0) or Color3.fromRGB(0,255,0)
+                        hl.OutlineColor = Color3.fromRGB(255,255,255)
                     elseif hl then hl:Destroy() end
                 end
             end
 
-            -- Logika Auto-Farm & Evasion
+            -- 2. ESP KOMPUTERÓW I DRZWI
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("Model") then
+                    if v.Name == "ComputerTable" then
+                        local hl = v:FindFirstChild("QuantumESP")
+                        if computerEspOn then
+                            if not hl then hl = Instance.new("Highlight", v); hl.Name = "QuantumESP"; hl.FillColor = Color3.fromRGB(0, 255, 255) end
+                        elseif hl then hl:Destroy() end
+                    elseif v.Name == "ExitDoor" then
+                        local hl = v:FindFirstChild("QuantumESP")
+                        if doorEspOn then
+                            if not hl then hl = Instance.new("Highlight", v); hl.Name = "QuantumESP"; hl.FillColor = Color3.fromRGB(255, 255, 0) end
+                        elseif hl then hl:Destroy() end
+                    end
+                end
+            end
+
+            -- 3. LOGIKA AUTO-FARM & EVASION
             local hrp = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
             if hrp and (autoComputer or autoDoor) then
                 local beast = getBeast()
                 local bPos = beast and beast:FindFirstChild("HumanoidRootPart") and beast.HumanoidRootPart.Position
+                
                 if bPos and (bPos - hrp.Position).Magnitude < 40 and not isEvading then
                     savedPos = hrp.CFrame; hrp.CFrame = hrp.CFrame + Vector3.new(0, safeHeight, 0)
                     isEvading = true
-                    Rayfield:Notify({Title = "BEAST NEAR!", Content = "Teleporting to sky.", Duration = 2})
-                elseif isEvading and bPos and (bPos - hrp.Position).Magnitude > 60 then
+                    Rayfield:Notify({Title = "BESTIA BLISKO!", Content = "Ucieczka w górę!", Duration = 2})
+                elseif isEvading and (not bPos or (bPos - Vector3.new(hrp.Position.X, 0, hrp.Position.Z)).Magnitude > 60) then
                     if savedPos then hrp.CFrame = savedPos end
                     isEvading = false
                 end
@@ -96,7 +132,7 @@ task.spawn(function()
                     local target = autoComputer and getNearest("ComputerTable") or (autoDoor and getNearest("ExitDoor"))
                     if target then
                         local tRoot = target:FindFirstChild("ComputerPart") or target:FindFirstChildWhichIsA("BasePart")
-                        if tRoot then hrp.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3) end
+                        if tRoot then hrp.CFrame = tRoot.CFrame * CFrame.new(0, 0, 4) end
                     end
                 end
             end
@@ -118,20 +154,22 @@ local function LoadMainWindow()
 
     if isFtF then
         local FtFTab = Window:CreateTab("Flee The Facility", 4483362458)
-        FtFTab:CreateSection("Automation")
-        FtFTab:CreateToggle({Name = "Auto-Computer (Escape System)", CurrentValue = autoComputer, Callback = function(v) autoComputer = v end})
+        FtFTab:CreateSection("Automatyzacja")
+        FtFTab:CreateToggle({Name = "Auto-Computer (Robienie + Uniki)", CurrentValue = autoComputer, Callback = function(v) autoComputer = v end})
         FtFTab:CreateToggle({Name = "Auto-Exit Door", CurrentValue = autoDoor, Callback = function(v) autoDoor = v end})
         
-        FtFTab:CreateSection("Visuals")
-        FtFTab:CreateToggle({Name = "Player/Beast ESP", CurrentValue = playerEspOn, Callback = function(v) playerEspOn = v end})
+        FtFTab:CreateSection("Visuals (ESP)")
+        FtFTab:CreateToggle({Name = "ESP Graczy & Bestii", CurrentValue = playerEspOn, Callback = function(v) playerEspOn = v end})
+        FtFTab:CreateToggle({Name = "ESP Komputerów", CurrentValue = computerEspOn, Callback = function(v) computerEspOn = v end})
+        FtFTab:CreateToggle({Name = "ESP Drzwi Wyjściowych", CurrentValue = doorEspOn, Callback = function(v) doorEspOn = v end})
         
         FtFTab:CreateSection("Movement")
         FtFTab:CreateToggle({Name = "Noclip", CurrentValue = noclipOn, Callback = function(v) noclipOn = v end})
         FtFTab:CreateToggle({Name = "WalkSpeed", CurrentValue = speedOn, Callback = function(v) speedOn = v; if not v then lp.Character.Humanoid.WalkSpeed = 16 end end})
         FtFTab:CreateSlider({Name = "Speed Value", Range = {16, 100}, Increment = 1, CurrentValue = 16, Callback = function(v) walkSpeedValue = v end})
     else
-        local MainTab = Window:CreateTab("Features", 4483362458)
-        MainTab:CreateSection("Universal Movement")
+        local MainTab = Window:CreateTab("Universal Features", 4483362458)
+        MainTab:CreateSection("Movement")
         MainTab:CreateToggle({Name = "WalkSpeed", CurrentValue = speedOn, Callback = function(v) speedOn = v end})
         MainTab:CreateSlider({Name = "Speed Value", Range = {16, 300}, Increment = 1, CurrentValue = 16, Callback = function(v) walkSpeedValue = v end})
     end
@@ -139,6 +177,7 @@ local function LoadMainWindow()
     local ScriptsTab = Window:CreateTab("Scripts", 4483362458)
     ScriptsTab:CreateButton({Name = "Infinite Yield", Callback = function() loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source'))() end})
     ScriptsTab:CreateButton({Name = "Dex Explorer", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() end})
+    ScriptsTab:CreateButton({Name = "SimpleSpy", Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))() end})
 
     local SettingsTab = Window:CreateTab("Settings", 4483362458)
     SettingsTab:CreateLabel("Unseen. Unpatched. Unstoppable. | Developed by Quantum X Team")
@@ -167,7 +206,7 @@ else
         if CheckKey(inputKey) then
             writefile(KeyFile, inputKey); Rayfield:Destroy(); task.wait(0.5); LoadMainWindow()
         else
-            Rayfield:Notify({Title = "Error", Content = "Invalid Key!"})
+            Rayfield:Notify({Title = "Błąd", Content = "Nieprawidłowy klucz!"})
         end
     end})
 end
