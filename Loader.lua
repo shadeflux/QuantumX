@@ -1,6 +1,6 @@
 -- Loader z mirrorami i diagnostyką dla Quantum X
 local urls = {
-    "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua",
+    "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua?t=" .. tick(),
     "https://ghproxy.net/https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua",
     "https://cdn.jsdelivr.net/gh/shadeflux/QuantumX@main/Hub.lua"
 }
