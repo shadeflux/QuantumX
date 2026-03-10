@@ -74,7 +74,7 @@ else
     KeyTab:CreateButton({
         Name = "🌐 Otwórz checkpointy (Get Key)",
         Callback = function()
-            setclipboard("https://work.ink/2dRx/quantumx-key")
+            setclipboard("https://work.ink/2dRx/key-system")
             Rayfield:Notify({
                 Title = "Link skopiowany!",
                 Content = "Wklej w przeglądarkę i ukończ kroki.",
