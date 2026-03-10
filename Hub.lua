@@ -9,8 +9,30 @@ local HttpService = game:GetService("HttpService")
 local lp = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- ===== LOAD FtF MODULE =====
-local FtF = loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
+-- ===== LOAD FtF MODULE WITH ERROR HANDLING =====
+local FtF
+do
+    local moduleUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"
+    local success, moduleSrc = pcall(function()
+        return game:HttpGet(moduleUrl)
+    end)
+    
+    if not success or not moduleSrc then
+        error("Failed to download FleeTheFacility module. Check URL or internet connection.")
+    end
+    
+    local moduleFunc, compileErr = loadstring(moduleSrc)
+    if not moduleFunc then
+        error("Failed to compile FleeTheFacility module: " .. tostring(compileErr))
+    end
+    
+    local moduleOk, moduleResult = pcall(moduleFunc)
+    if not moduleOk then
+        error("Failed to initialize FleeTheFacility module: " .. tostring(moduleResult))
+    end
+    
+    FtF = moduleResult
+end
 
 -- ===== CONFIG =====
 getgenv().Config = {
@@ -25,27 +47,27 @@ getgenv().Config = {
 -- ===== KEY SYSTEM =====
 local function CheckKey(token)
     if not token or token == "" then return false end
-    
+
     -- Usuń spacje i znaki specjalne
     token = token:gsub("%s+", "")
-    
+
     -- Tworzymy poprawny URL – endpoint + token
     local url = "https://work.ink/_api/v2/token/isValid/" .. token
-    
+
     local success, response = pcall(function()
         return game:HttpGet(url)
     end)
-    
+
     if not success or not response then
         warn("Key API connection failed")
         return false
     end
-    
+
     -- Parsujemy JSON
     local decodedSuccess, decoded = pcall(function()
         return HttpService:JSONDecode(response)
     end)
-    
+
     if decodedSuccess and decoded and decoded.valid == true then
         return true
     else
@@ -70,10 +92,10 @@ end
 -- ===== MAIN WINDOW =====
 local function LoadMainWindow()
     task.wait(0.5)
-    
+
     -- Inicjalizacja modułu FtF
     FtF.Initialize()
-    
+
     -- Główne pętle
     RunService.Stepped:Connect(function()
         local c = lp.Character
@@ -87,7 +109,7 @@ local function LoadMainWindow()
                     h.JumpPower = getgenv().Config.jumpVal
                 end
             end
-            
+
             if getgenv().Config.noclip then
                 for _, v in ipairs(c:GetDescendants()) do
                     if v:IsA("BasePart") then
@@ -124,7 +146,7 @@ local function LoadMainWindow()
     local tab_ftf = win:CreateTab("FtF", 4483362458)
 
     tab_ftf:CreateDivider("🤖 SURVIVOR AUTOMATION")
-    
+
     tab_ftf:CreateToggle({
         Name = "Auto Computer",
         CurrentValue = false,
@@ -142,7 +164,7 @@ local function LoadMainWindow()
     })
 
     tab_ftf:CreateDivider("👹 BEAST AUTOMATION")
-    
+
     tab_ftf:CreateToggle({
         Name = "Auto Capture",
         CurrentValue = false,
@@ -150,7 +172,7 @@ local function LoadMainWindow()
     })
 
     tab_ftf:CreateDivider("👁️ VISUALS")
-    
+
     tab_ftf:CreateToggle({
         Name = "Player ESP",
         CurrentValue = false,
@@ -171,7 +193,7 @@ local function LoadMainWindow()
     local tab_player = win:CreateTab("Player", 4483362458)
 
     tab_player:CreateDivider("🏃 MOVEMENT")
-    
+
     tab_player:CreateToggle({
         Name = "Speed Hack",
         CurrentValue = false,
@@ -198,7 +220,7 @@ local function LoadMainWindow()
     })
 
     tab_player:CreateDivider("⚙️ MISC")
-    
+
     tab_player:CreateToggle({
         Name = "Noclip",
         CurrentValue = false,
@@ -212,9 +234,9 @@ local function LoadMainWindow()
 
     -- Server Tab
     local tab_server = win:CreateTab("Server", 4483362458)
-    
+
     tab_server:CreateDivider("🔄 SERVER ACTIONS")
-    
+
     tab_server:CreateButton({
         Name = "Rejoin",
         Callback = function() TeleportService:Teleport(game.PlaceId, lp) end,
@@ -233,9 +255,9 @@ local function LoadMainWindow()
 
     -- Scripts Tab
     local tab_scripts = win:CreateTab("Scripts", 4483362458)
-    
+
     tab_scripts:CreateDivider("📜 ADDITIONAL SCRIPTS")
-    
+
     tab_scripts:CreateButton({
         Name = "Infinite Yield",
         Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))() end,
@@ -247,7 +269,7 @@ local function LoadMainWindow()
 
     -- Credits Tab
     local tab_credits = win:CreateTab("Credits", 4483362458)
-    
+
     tab_credits:CreateDivider("⭐ QUANTUM X")
     tab_credits:CreateLabel("Version: 2.0.0")
     tab_credits:CreateLabel("Game: Flee The Facility")
