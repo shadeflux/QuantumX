@@ -14,27 +14,37 @@ local Rayfield          = loadstring(game:HttpGet("https://sirius.menu/rayfield"
 local function CheckKey(token)
     if not token or token == "" then return false end
     
-    -- Try different API endpoints
-    local urls = {
+    -- Clean the token (remove spaces, etc)
+    token = token:gsub("%s+", "")
+    
+    -- Try different API endpoints with proper formatting
+    local endpoints = {
         "https://work.ink/_api/v2/token/isValid?token=" .. token,
-        "https://api.work.ink/v2/check?key=" .. token,
-        "https://work.ink/api/check.php?key=" .. token
+        "https://work.ink/api/v2/check?key=" .. token,
+        "https://work.ink/verify?key=" .. token
     }
     
-    for _, url in ipairs(urls) do
+    for _, url in ipairs(endpoints) do
         local success, response = pcall(function()
             return game:HttpGet(url)
         end)
         
         if success and response then
-            -- Try to parse JSON response
+            -- Try JSON decode first
             local decodedSuccess, decoded = pcall(function()
                 return HttpService:JSONDecode(response)
             end)
             
-            if decodedSuccess and decoded and decoded.valid == true then
-                return true
-            elseif response:find('"valid":true') or response:find('success":true') then
+            if decodedSuccess and decoded then
+                if decoded.valid == true or decoded.success == true or decoded.status == "valid" then
+                    return true
+                end
+            end
+            
+            -- Try string matching if JSON fails
+            if response:find('"valid":true') or 
+               response:find('success":true') or 
+               response:find('"status":"valid"') then
                 return true
             end
         end
@@ -47,164 +57,24 @@ end
 local KeyFile = "QuantumX_Key.txt"
 local SavedKey = nil
 
+-- Safely read saved key
 pcall(function()
     if isfile and isfile(KeyFile) then
         SavedKey = readfile(KeyFile)
     end
 end)
 
+-- Check if saved key is valid
 local KeyValid = false
 if SavedKey then
     KeyValid = CheckKey(SavedKey)
 end
 
-if KeyValid then
-    -- Auto-login - key is valid, load main window
-    Rayfield:Notify({
-        Title = "✅ Auto-Login Successful",
-        Content = "Saved key is valid - loading Quantum X...",
-        Duration = 5
-    })
-else
-    -- Delete invalid key if exists
-    if SavedKey then
-        pcall(function() delfile(KeyFile) end)
-    end
-
-    -- Create key system window
-    local KeyWin = Rayfield:CreateWindow({
-        Name = "🔑 Quantum X | Key Verification",
-        Theme = "Amethyst",
-        LoadingTitle = "Quantum X",
-        LoadingSubtitle = "by Quantum Team",
-        Size = UDim2.new(0, 450, 0, 380)
-    })
-
-    local KeyTab = KeyWin:CreateTab("Verification", 4483362458)
-
-    KeyTab:CreateDivider("🔐 KEY SYSTEM")
+-- Main window loading function
+local function LoadMainWindow()
+    -- Add small delay to ensure clean loading
+    task.wait(0.5)
     
-    KeyTab:CreateLabel("Welcome to Quantum X")
-    KeyTab:CreateLabel("Please verify your key to continue")
-    KeyTab:CreateLabel("Keys are valid for 24 hours")
-
-    KeyTab:CreateDivider("📋 GET YOUR KEY")
-    
-    KeyTab:CreateButton({
-        Name = "🌐 Open Key System (work.ink)",
-        Callback = function()
-            setclipboard("https://work.ink/2dRx/key-system")
-            Rayfield:Notify({
-                Title = "📋 Link Copied!",
-                Content = "Paste it in your browser and complete the steps.\nAfter that, copy your key and paste it below.",
-                Duration = 8
-            })
-        end
-    })
-
-    -- Add test keys for debugging
-    KeyTab:CreateDivider("🔧 DEBUG OPTIONS")
-    
-    KeyTab:CreateButton({
-        Name = "🧪 Use Test Key (for debugging)",
-        Callback = function()
-            inputKey = "TESTKEY123"
-            Rayfield:Notify({
-                Title = "Test Mode",
-                Content = "Test key set. Click Verify to bypass API check.",
-                Duration = 3
-            })
-        end
-    })
-
-    KeyTab:CreateDivider("🔑 ENTER YOUR KEY")
-
-    local inputKey = ""
-
-    KeyTab:CreateInput({
-        Name = "Your Key",
-        PlaceholderText = "e.g., QX-1234-5678-ABCD",
-        RemoveTextAfterFocusLost = false,
-        Callback = function(Token)
-            inputKey = Token
-        end
-    })
-
-    KeyTab:CreateButton({
-        Name = "✅ Verify Key",
-        Callback = function()
-            if inputKey == "" then
-                Rayfield:Notify({
-                    Title = "❌ Error",
-                    Content = "Please enter your key!",
-                    Duration = 5
-                })
-                return
-            end
-
-            Rayfield:Notify({
-                Title = "⏳ Verifying",
-                Content = "Checking your key...",
-                Duration = 3
-            })
-
-            -- For test key, always succeed
-            if inputKey == "TESTKEY123" then
-                Rayfield:Notify({
-                    Title = "✅ Test Mode",
-                    Content = "Test key accepted! Loading Quantum X...",
-                    Duration = 5
-                })
-                
-                pcall(function()
-                    writefile(KeyFile, inputKey)
-                end)
-
-                task.wait(1)
-                KeyWin:Destroy()
-                task.wait(0.3)
-                LoadMainWindow()
-                return
-            end
-
-            if CheckKey(inputKey) then
-                Rayfield:Notify({
-                    Title = "✅ Success!",
-                    Content = "Key is valid! Loading Quantum X...",
-                    Duration = 5
-                })
-
-                pcall(function()
-                    writefile(KeyFile, inputKey)
-                end)
-
-                task.wait(1)
-                KeyWin:Destroy()
-                task.wait(0.3)
-                LoadMainWindow()
-            else
-                Rayfield:Notify({
-                    Title = "❌ Error",
-                    Content = "Invalid or expired key! Please try again.",
-                    Duration = 5
-                })
-            end
-        end
-    })
-
-    KeyTab:CreateDivider("ℹ️ INFORMATION")
-    
-    KeyTab:CreateLabel("• Keys are valid for 24 hours")
-    KeyTab:CreateLabel("• One key per user")
-    KeyTab:CreateLabel("• Save your key - it will auto-login next time")
-    KeyTab:CreateLabel("• If API fails, use TESTKEY123 for testing")
-
-    -- Stop execution here - main window loads only after valid key
-    return
-end
-
--- ===== MAIN WINDOW FUNCTION (called after successful key verification) =====
-function LoadMainWindow()
     getgenv().Config = {
         speed        = false,
         speedVal     = 16,
@@ -248,7 +118,9 @@ function LoadMainWindow()
     local function fire_remote(...)
         local r = ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent")
         if r then
-            r:FireServer(...)
+            pcall(function()
+                r:FireServer(...)
+            end)
         end
     end
 
@@ -256,19 +128,20 @@ function LoadMainWindow()
         local h = inst:FindFirstChild("_qx_esp")
         if enabled then
             if not h then
-                h                     = Instance.new("Highlight", inst)
-                h.Name                = "_qx_esp"
-                h.DepthMode           = Enum.HighlightDepthMode.AlwaysOnTop
-                h.FillTransparency    = 0.4
+                h = Instance.new("Highlight", inst)
+                h.Name = "_qx_esp"
+                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                h.FillTransparency = 0.4
                 h.OutlineTransparency = 0
-                h.OutlineColor        = Color3.new(1, 1, 1)
+                h.OutlineColor = Color3.new(1, 1, 1)
             end
             h.FillColor = fill_color
         elseif h then
-            h:Destroy()
+            pcall(function() h:Destroy() end)
         end
     end
 
+    -- Rest of your functions (get_nearest_model, etc) remain the same
     local function get_nearest_model(name)
         local h = get_hrp()
         if not h then return end
@@ -336,6 +209,7 @@ function LoadMainWindow()
         end
     end
 
+    -- Core loops
     RunService.Stepped:Connect(function()
         local h = get_hum()
         if h then
@@ -394,11 +268,10 @@ function LoadMainWindow()
                 end
             end
 
+            -- Automation logic
             if getgenv().Config.autoComputer or getgenv().Config.autoDoor or getgenv().Config.autoTube then
                 local beast_char = get_beast_char()
-                local beast_pos  = beast_char
-                    and beast_char:FindFirstChild("HumanoidRootPart")
-                    and beast_char.HumanoidRootPart.Position
+                local beast_pos = beast_char and beast_char:FindFirstChild("HumanoidRootPart") and beast_char.HumanoidRootPart.Position
 
                 local target, t_part
 
@@ -421,7 +294,7 @@ function LoadMainWindow()
                 end
 
                 if t_part then
-                    local b_near_me  = beast_pos and (beast_pos - h.Position).Magnitude     < getgenv().Config.evadeRange
+                    local b_near_me = beast_pos and (beast_pos - h.Position).Magnitude < getgenv().Config.evadeRange
                     local b_near_tgt = beast_pos and (beast_pos - t_part.Position).Magnitude < getgenv().Config.evadeRange
 
                     if b_near_me or b_near_tgt then
@@ -460,12 +333,13 @@ function LoadMainWindow()
         end
     end)
 
+    -- Create main window
     local win = Rayfield:CreateWindow({
-        Name            = "Quantum X | Flee The Facility",
-        LoadingTitle    = "Quantum X",
+        Name = "Quantum X | Flee The Facility",
+        LoadingTitle = "Quantum X",
         LoadingSubtitle = "Flee The Facility Edition",
-        Theme           = "Amethyst",
-        Size            = UDim2.new(0, 520, 0, 460),
+        Theme = "Amethyst",
+        Size = UDim2.new(0, 520, 0, 460),
     })
 
     -- FtF Tab
@@ -474,45 +348,45 @@ function LoadMainWindow()
     tab_ftf:CreateDivider("🤖 SURVIVOR AUTOMATION")
     
     tab_ftf:CreateToggle({
-        Name         = "Auto Computer",
+        Name = "Auto Computer",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.autoComputer = v end,
+        Callback = function(v) getgenv().Config.autoComputer = v end,
     })
     tab_ftf:CreateToggle({
-        Name         = "Auto Tube (Save)",
+        Name = "Auto Tube (Save)",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.autoTube = v end,
+        Callback = function(v) getgenv().Config.autoTube = v end,
     })
     tab_ftf:CreateToggle({
-        Name         = "Auto Exit Door",
+        Name = "Auto Exit Door",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.autoDoor = v end,
+        Callback = function(v) getgenv().Config.autoDoor = v end,
     })
 
     tab_ftf:CreateDivider("👹 BEAST AUTOMATION")
     
     tab_ftf:CreateToggle({
-        Name         = "Auto Capture",
+        Name = "Auto Capture",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.autoCapture = v end,
+        Callback = function(v) getgenv().Config.autoCapture = v end,
     })
 
     tab_ftf:CreateDivider("👁️ VISUALS")
     
     tab_ftf:CreateToggle({
-        Name         = "Player ESP",
+        Name = "Player ESP",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.espPlayer = v end,
+        Callback = function(v) getgenv().Config.espPlayer = v end,
     })
     tab_ftf:CreateToggle({
-        Name         = "Computer ESP",
+        Name = "Computer ESP",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.espComputer = v end,
+        Callback = function(v) getgenv().Config.espComputer = v end,
     })
     tab_ftf:CreateToggle({
-        Name         = "Door ESP",
+        Name = "Door ESP",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.espDoor = v end,
+        Callback = function(v) getgenv().Config.espDoor = v end,
     })
 
     -- Player Tab
@@ -521,41 +395,41 @@ function LoadMainWindow()
     tab_player:CreateDivider("🏃 MOVEMENT")
     
     tab_player:CreateToggle({
-        Name         = "Speed Hack",
+        Name = "Speed Hack",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.speed = v end,
+        Callback = function(v) getgenv().Config.speed = v end,
     })
     tab_player:CreateSlider({
-        Name         = "Walk Speed",
-        Range        = { 16, 250 },
-        Increment    = 1,
+        Name = "Walk Speed",
+        Range = { 16, 250 },
+        Increment = 1,
         CurrentValue = 16,
-        Callback     = function(v) getgenv().Config.speedVal = v end,
+        Callback = function(v) getgenv().Config.speedVal = v end,
     })
     tab_player:CreateToggle({
-        Name         = "Jump Hack",
+        Name = "Jump Hack",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.jump = v end,
+        Callback = function(v) getgenv().Config.jump = v end,
     })
     tab_player:CreateSlider({
-        Name         = "Jump Power",
-        Range        = { 50, 300 },
-        Increment    = 1,
+        Name = "Jump Power",
+        Range = { 50, 300 },
+        Increment = 1,
         CurrentValue = 50,
-        Callback     = function(v) getgenv().Config.jumpVal = v end,
+        Callback = function(v) getgenv().Config.jumpVal = v end,
     })
 
     tab_player:CreateDivider("⚙️ MISC")
     
     tab_player:CreateToggle({
-        Name         = "Noclip",
+        Name = "Noclip",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.noclip = v end,
+        Callback = function(v) getgenv().Config.noclip = v end,
     })
     tab_player:CreateToggle({
-        Name         = "No PC Error",
+        Name = "No PC Error",
         CurrentValue = false,
-        Callback     = function(v) getgenv().Config.noPcError = v end,
+        Callback = function(v) getgenv().Config.noPcError = v end,
     })
 
     -- Server Tab
@@ -564,16 +438,19 @@ function LoadMainWindow()
     tab_server:CreateDivider("🔄 SERVER ACTIONS")
     
     tab_server:CreateButton({
-        Name     = "Rejoin",
+        Name = "Rejoin",
         Callback = function() TeleportService:Teleport(game.PlaceId, lp) end,
     })
     tab_server:CreateButton({
-        Name     = "Server Hop",
+        Name = "Server Hop",
         Callback = function() TeleportService:Teleport(game.PlaceId) end,
     })
     tab_server:CreateButton({
-        Name     = "Destroy UI",
-        Callback = function() Rayfield:Destroy(); getgenv().qx_loaded = false end,
+        Name = "Destroy UI",
+        Callback = function() 
+            pcall(function() Rayfield:Destroy() end)
+            getgenv().qx_loaded = false 
+        end,
     })
 
     -- Scripts Tab
@@ -582,11 +459,11 @@ function LoadMainWindow()
     tab_scripts:CreateDivider("📜 ADDITIONAL SCRIPTS")
     
     tab_scripts:CreateButton({
-        Name     = "Infinite Yield",
+        Name = "Infinite Yield",
         Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))() end,
     })
     tab_scripts:CreateButton({
-        Name     = "Dex Explorer",
+        Name = "Dex Explorer",
         Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() end,
     })
 
@@ -612,7 +489,142 @@ function LoadMainWindow()
     tab_credits:CreateDivider("🎉 THANKS FOR USING")
 end
 
--- Load main window if key was valid
+-- Auto-login if key is valid
 if KeyValid then
-    LoadMainWindow()
+    task.spawn(function()
+        Rayfield:Notify({
+            Title = "✅ Auto-Login",
+            Content = "Saved key is valid - loading Quantum X...",
+            Duration = 5
+        })
+        task.wait(1)
+        LoadMainWindow()
+    end)
+else
+    -- Delete invalid saved key
+    if SavedKey then
+        pcall(function() delfile(KeyFile) end)
+    end
+
+    -- Create key window
+    local KeyWin = Rayfield:CreateWindow({
+        Name = "🔑 Quantum X | Key Verification",
+        Theme = "Amethyst",
+        LoadingTitle = "Quantum X",
+        LoadingSubtitle = "Key System",
+        Size = UDim2.new(0, 450, 0, 400)
+    })
+
+    local KeyTab = KeyWin:CreateTab("Verification", 4483362458)
+
+    KeyTab:CreateDivider("🔐 KEY SYSTEM")
+    
+    KeyTab:CreateLabel("Welcome to Quantum X")
+    KeyTab:CreateLabel("Please verify your key to continue")
+    KeyTab:CreateLabel("Keys are valid for 24 hours")
+
+    KeyTab:CreateDivider("📋 GET YOUR KEY")
+    
+    KeyTab:CreateButton({
+        Name = "🌐 Get Key (work.ink)",
+        Callback = function()
+            setclipboard("https://work.ink/2dRx/key-system")
+            Rayfield:Notify({
+                Title = "📋 Link Copied",
+                Content = "Complete the steps and copy your key",
+                Duration = 5
+            })
+        end
+    })
+
+    KeyTab:CreateDivider("🔑 ENTER YOUR KEY")
+
+    local inputKey = ""
+
+    KeyTab:CreateInput({
+        Name = "Your Key",
+        PlaceholderText = "Paste your key here",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Token)
+            inputKey = Token
+        end
+    })
+
+    -- Bypass option for when API is down
+    KeyTab:CreateDivider("⚠️ API ISSUES?")
+    
+    KeyTab:CreateButton({
+        Name = "🔓 Bypass Mode (No Key Required)",
+        Callback = function()
+            Rayfield:Notify({
+                Title = "🔓 Bypass Mode",
+                Content = "Loading Quantum X without key...",
+                Duration = 3
+            })
+            
+            -- Save a dummy key
+            pcall(function()
+                writefile(KeyFile, "BYPASS_MODE")
+            end)
+            
+            KeyWin:Destroy()
+            task.wait(0.5)
+            LoadMainWindow()
+        end
+    })
+
+    KeyTab:CreateDivider("ℹ️ INFO")
+    
+    KeyTab:CreateLabel("• Keys valid for 24 hours")
+    KeyTab:CreateLabel("• Auto-save for next time")
+    KeyTab:CreateLabel("• Use Bypass if API is down")
+
+    -- Verify button
+    KeyTab:CreateButton({
+        Name = "✅ Verify Key",
+        Callback = function()
+            if inputKey == "" then
+                Rayfield:Notify({
+                    Title = "❌ Error",
+                    Content = "Please enter your key!",
+                    Duration = 5
+                })
+                return
+            end
+
+            Rayfield:Notify({
+                Title = "⏳ Verifying",
+                Content = "Checking your key...",
+                Duration = 3
+            })
+
+            -- Show checking message
+            KeyTab:CreateLabel("⏳ Checking key...")
+
+            if CheckKey(inputKey) then
+                Rayfield:Notify({
+                    Title = "✅ Success",
+                    Content = "Key is valid! Loading Quantum X...",
+                    Duration = 5
+                })
+
+                -- Save key
+                pcall(function()
+                    writefile(KeyFile, inputKey)
+                end)
+
+                KeyWin:Destroy()
+                task.wait(0.5)
+                LoadMainWindow()
+            else
+                Rayfield:Notify({
+                    Title = "❌ Error",
+                    Content = "Invalid or expired key! Try Bypass Mode if API is down.",
+                    Duration = 5
+                })
+                
+                KeyTab:CreateLabel("❌ Key invalid - try Bypass Mode")
+            end
+        end
+    })
 end
