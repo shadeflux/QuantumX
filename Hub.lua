@@ -2,21 +2,17 @@
 if getgenv().qx_loaded then return end
 getgenv().qx_loaded = true
 
--- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
 local lp = Players.LocalPlayer
-
--- Load Rayfield
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- Load FtF module
-local FtF = loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
+-- ===== LOAD FtF MODULE =====
+local FtF = loadstring(game:HttpGet("https://raw.githubusercontent.com/TWÓJ_LOGIN/QuantumX/main/fleethefacility.lua"))()
 
--- Configuration
+-- ===== CONFIG =====
 getgenv().Config = {
     speed = false,
     speedVal = 16,
@@ -26,31 +22,35 @@ getgenv().Config = {
     noPcError = false,
 }
 
--- Key System
+-- ===== KEY SYSTEM =====
 local function CheckKey(token)
     if not token or token == "" then return false end
+    
+    -- Usuń spacje i znaki specjalne
     token = token:gsub("%s+", "")
     
-    local endpoints = {
-        "https://work.ink/_api/v2/token/isValid?token=" .. token,
-    }
+    -- Tworzymy poprawny URL – endpoint + token
+    local url = "https://work.ink/_api/v2/token/isValid/" .. token
     
-    for _, url in ipairs(endpoints) do
-        local success, response = pcall(function()
-            return game:HttpGet(url)
-        end)
-        
-        if success and response then
-            local decodedSuccess, decoded = pcall(function()
-                return HttpService:JSONDecode(response)
-            end)
-            
-            if decodedSuccess and decoded and decoded.valid == true then
-                return true
-            end
-        end
+    local success, response = pcall(function()
+        return game:HttpGet(url)
+    end)
+    
+    if not success or not response then
+        warn("Key API connection failed")
+        return false
     end
-    return false
+    
+    -- Parsujemy JSON
+    local decodedSuccess, decoded = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+    
+    if decodedSuccess and decoded and decoded.valid == true then
+        return true
+    else
+        return false
+    end
 end
 
 local KeyFile = "QuantumX_Key.txt"
@@ -67,14 +67,14 @@ if SavedKey then
     KeyValid = CheckKey(SavedKey)
 end
 
--- Main Window Function
+-- ===== MAIN WINDOW =====
 local function LoadMainWindow()
     task.wait(0.5)
     
-    -- Initialize FtF module
+    -- Inicjalizacja modułu FtF
     FtF.Initialize()
     
-    -- Core loops
+    -- Główne pętle
     RunService.Stepped:Connect(function()
         local c = lp.Character
         if c then
@@ -111,7 +111,7 @@ local function LoadMainWindow()
         end
     end)
 
-    -- Create main window
+    -- Tworzymy główne okno
     local win = Rayfield:CreateWindow({
         Name = "Quantum X | Flee The Facility",
         LoadingTitle = "Quantum X",
@@ -258,7 +258,7 @@ local function LoadMainWindow()
     tab_credits:CreateLabel("Discord: discord.gg/quantumx")
 end
 
--- Auto-login or show key window
+-- ===== AUTO-LOGIN LUB KEY SYSTEM =====
 if KeyValid then
     task.spawn(function()
         Rayfield:Notify({
@@ -270,12 +270,12 @@ if KeyValid then
         LoadMainWindow()
     end)
 else
-    -- Delete invalid saved key
+    -- Usuń stary klucz jeśli był
     if SavedKey then
         pcall(function() delfile(KeyFile) end)
     end
 
-    -- Key window
+    -- Okno key system
     local KeyWin = Rayfield:CreateWindow({
         Name = "🔑 Quantum X | Key Verification",
         Theme = "Amethyst",
@@ -289,16 +289,20 @@ else
     KeyTab:CreateDivider("🔐 KEY SYSTEM")
     KeyTab:CreateLabel("Please verify your key to continue")
 
-    KeyTab:CreateDivider("📋 GET KEY")
+    KeyTab:CreateDivider("📋 GET YOUR KEY")
     KeyTab:CreateButton({
-        Name = "🌐 Get Key",
+        Name = "🌐 Open Key Generator",
         Callback = function()
             setclipboard("https://work.ink/2dRx/key-system")
-            Rayfield:Notify({Title = "Link Copied", Content = "Complete steps and copy your key", Duration = 5})
+            Rayfield:Notify({
+                Title = "Link Copied",
+                Content = "Complete steps and copy your key",
+                Duration = 5
+            })
         end
     })
 
-    KeyTab:CreateDivider("🔑 ENTER KEY")
+    KeyTab:CreateDivider("🔑 ENTER YOUR KEY")
     local inputKey = ""
     KeyTab:CreateInput({
         Name = "Your Key",
@@ -307,7 +311,7 @@ else
     })
 
     KeyTab:CreateButton({
-        Name = "✅ Verify",
+        Name = "✅ Verify Key",
         Callback = function()
             if inputKey == "" then
                 Rayfield:Notify({Title = "Error", Content = "Enter your key!", Duration = 5})
@@ -327,6 +331,6 @@ else
     })
 
     KeyTab:CreateDivider("ℹ️ INFO")
-    KeyTab:CreateLabel("• Keys valid 24h")
+    KeyTab:CreateLabel("• Keys valid for 24h")
     KeyTab:CreateLabel("• Auto-save feature")
 end
