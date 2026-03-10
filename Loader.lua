@@ -1,5 +1,5 @@
 -- Loader dla Quantum X
-local url = "https://raw.githubusercontent.com/shadeflux/QuantumX/main/hub.lua"
+local url = "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/Hub.lua"
 local success, result = pcall(function()
     return game:HttpGet(url)
 end)
