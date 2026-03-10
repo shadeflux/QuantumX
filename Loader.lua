@@ -15,20 +15,23 @@ for i, url in ipairs(urls) do
     
     if success and result then
         print("✅ Pobrano " .. #result .. " znaków z URL " .. i)
-        
-        -- Sprawdź pierwsze 100 znaków (czy to na pewno Lua)
         print("Pierwsze 100 znaków:")
         print(string.sub(result, 1, 100))
         
-        -- Próba kompilacji z obsługą błędów
-        local func, err = loadstring(result)
-        if func then
-            print("✅ Kompilacja udana, uruchamiam...")
-            func()
-            loaded = true
-            break
+        -- Próba kompilacji
+        local func, compileErr = loadstring(result)
+        if not func then
+            warn("❌ Błąd kompilacji: " .. tostring(compileErr))
         else
-            warn("❌ Błąd kompilacji z URL " .. i .. ": " .. tostring(err))
+            print("✅ Kompilacja udana, uruchamiam...")
+            -- Uruchom w chronionym środowisku
+            local ok, runErr = pcall(func)
+            if not ok then
+                warn("❌ Błąd wykonania: " .. tostring(runErr))
+            else
+                loaded = true
+                break
+            end
         end
     else
         warn("❌ Nie udało się pobrać z URL " .. i .. ": " .. tostring(result))
