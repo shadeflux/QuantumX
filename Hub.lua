@@ -9,7 +9,7 @@ local lp = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- Load the FtF module (dostosuj URL do swojego repozytorium!)
-local FtF = loadstring(game:HttpGet("https://raw.githubusercontent.com/TWÓJ_LOGIN/QuantumX/main/fleethefacility.lua"))()
+local FtF = loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
 
 -- Global config
 getgenv().Config = {
