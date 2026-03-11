@@ -215,12 +215,5 @@ tab_scripts:CreateButton({
 })
 tab_scripts:CreateButton({
     Name     = "SimplySpy (Remote Spy)",
-    Callback = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/SimplySpy/SimplySpy/main/SimplySpy.lua"))()
-        Rayfield:Notify({
-            Title = "SimplySpy",
-            Content = "Loaded! Check console for remote logs.",
-            Duration = 5
-        })
-    end,
+    Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/SimplySpy/SimplySpy/main/SimplySpy.lua"))() end,
 })
