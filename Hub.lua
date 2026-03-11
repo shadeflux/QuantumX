@@ -9,43 +9,41 @@ local lp = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- ===== LOAD FtF MODULE =====
-local FtF
-local moduleUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"
-
+local moduleUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/main/fleethefacility.lua"
 local success, moduleSrc = pcall(function()
     return game:HttpGet(moduleUrl)
 end)
 
 if not success or not moduleSrc then
     Rayfield:Notify({
-        Title = "❌ Błąd ładowania",
-        Content = "Nie można pobrać modułu gry. Sprawdź URL.",
+        Title = "❌ Błąd",
+        Content = "Nie można pobrać modułu gry.",
         Duration = 10
     })
-    error("Failed to download FleeTheFacility module")
+    error("Failed to download module")
 end
 
 local moduleFunc, compileErr = loadstring(moduleSrc)
 if not moduleFunc then
     Rayfield:Notify({
-        Title = "❌ Błąd kompilacji",
+        Title = "❌ Błąd",
         Content = "Moduł gry uszkodzony.",
         Duration = 10
     })
-    error("Failed to compile FleeTheFacility module: " .. tostring(compileErr))
+    error("Compile error: " .. tostring(compileErr))
 end
 
 local moduleOk, moduleResult = pcall(moduleFunc)
 if not moduleOk then
     Rayfield:Notify({
-        Title = "❌ Błąd inicjalizacji",
-        Content = "Moduł gry nie chce działać.",
+        Title = "❌ Błąd",
+        Content = "Inicjalizacja modułu nie powiodła się.",
         Duration = 10
     })
-    error("Failed to initialize FleeTheFacility module: " .. tostring(moduleResult))
+    error("Init error: " .. tostring(moduleResult))
 end
 
-FtF = moduleResult
+local FtF = moduleResult
 
 -- ===== GLOBAL CONFIG =====
 getgenv().Config = {
@@ -57,20 +55,14 @@ getgenv().Config = {
     noPcError = false,
 }
 
--- ===== NO PC ERROR (POPRAWIONY) =====
+-- ===== NO PC ERROR LOOP =====
 task.spawn(function()
-    while task.wait(0.05) do  -- Szybciej, żeby na pewno działało
+    while task.wait(0.1) do
         if getgenv().Config.noPcError then
             pcall(function()
                 local vu = game:GetService("VirtualUser")
                 vu:CaptureController()
                 vu:ClickButton1(Vector2.new())
-                
-                -- Dodatkowa metoda na "No PC Error"
-                local mouse = lp:GetMouse()
-                if mouse then
-                    vu:ClickButton1(Vector2.new(mouse.X, mouse.Y))
-                end
             end)
         end
     end
