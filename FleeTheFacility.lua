@@ -21,7 +21,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
--- Utility functions
+-- Private helper functions
 local function get_char()
     return lp.Character
 end
@@ -44,14 +44,11 @@ end
 local function fire_remote(...)
     local r = ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent")
     if r then
-        pcall(function()
-            r:FireServer(...)
-        end)
+        r:FireServer(...)
     end
 end
 
 local function set_esp(inst, fill_color, enabled)
-    if not inst then return end
     local h = inst:FindFirstChild("_qx_esp")
     if enabled then
         if not h then
@@ -64,13 +61,13 @@ local function set_esp(inst, fill_color, enabled)
         end
         h.FillColor = fill_color
     elseif h then
-        pcall(function() h:Destroy() end)
+        h:Destroy()
     end
 end
 
 local function get_nearest_model(name)
     local h = get_hrp()
-    if not h then return nil end
+    if not h then return end
     local best, best_dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v.Name == name then
@@ -89,7 +86,7 @@ end
 
 local function get_nearest_player()
     local h = get_hrp()
-    if not h then return nil end
+    if not h then return end
     local best, best_dist = nil, math.huge
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= lp and p.Character then
@@ -108,7 +105,7 @@ end
 
 local function get_nearest_tube()
     local h = get_hrp()
-    if not h then return nil end
+    if not h then return end
     local best, best_dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and (v.Name == "Tube" or v.Name == "CryoTube") then
@@ -133,35 +130,12 @@ local function get_beast_char()
             end
         end
     end
-    return nil
-end
-
--- Funkcja do interakcji z komputerem/tubą/drzwiami
-local function interact_with_object(target_part)
-    if not target_part then return end
-    
-    -- Symuluj kliknięcie lub użyj remote
-    local remote = ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent")
-    if remote then
-        pcall(function()
-            remote:FireServer("Interact", target_part)
-        end)
-    end
-    
-    -- Dodatkowo spróbuj fire touch interest
-    local touch = target_part:FindFirstChildWhichIsA("TouchTransmitter")
-    if touch then
-        firetouchinterest(lp.Character.HumanoidRootPart, target_part, 0)
-        task.wait(0.1)
-        firetouchinterest(lp.Character.HumanoidRootPart, target_part, 1)
-    end
 end
 
 -- ESP update loop
 function FtF.UpdateESP()
     task.spawn(function()
         while task.wait(0.25) do
-            -- Player ESP
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= lp and p.Character then
                     local is_b = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
@@ -173,7 +147,6 @@ function FtF.UpdateESP()
                 end
             end
 
-            -- Computer ESP
             for _, v in ipairs(workspace:GetDescendants()) do
                 if v:IsA("Model") then
                     if v.Name == "ComputerTable" then
@@ -187,14 +160,13 @@ function FtF.UpdateESP()
     end)
 end
 
--- Automation loop (POPRAWIONA)
+-- Automation loop (sprawdzone działanie)
 function FtF.StartAutomation()
     task.spawn(function()
         while task.wait(0.25) do
             local h = get_hrp()
             if not h then continue end
 
-            -- Auto Computer/Door/Tube
             if FtF.Config.autoComputer or FtF.Config.autoDoor or FtF.Config.autoTube then
                 local beast_char = get_beast_char()
                 local beast_pos = beast_char and beast_char:FindFirstChild("HumanoidRootPart") and beast_char.HumanoidRootPart.Position
@@ -224,14 +196,9 @@ function FtF.StartAutomation()
                     local b_near_tgt = beast_pos and (beast_pos - t_part.Position).Magnitude < FtF.Config.evadeRange
 
                     if b_near_me or b_near_tgt then
-                        -- Evade mode - go to safe height
                         h.CFrame = CFrame.new(h.Position.X, FtF.Config.evadeSafeY, h.Position.Z)
                     else
-                        -- Teleport do obiektu i interakcja
                         h.CFrame = t_part.CFrame * CFrame.new(0, 2, 4)
-                        interact_with_object(t_part)
-                        
-                        -- Specyficzne remotes dla poszczególnych akcji
                         if FtF.Config.autoComputer then
                             fire_remote("Input", "Action", true)
                             fire_remote("SetPlayerStatus", 1)
@@ -243,37 +210,19 @@ function FtF.StartAutomation()
                 end
             end
 
-            -- Auto Capture for Beast (POPRAWIONE)
             if FtF.Config.autoCapture and get_is_beast() then
                 local vic = get_nearest_player()
                 if vic then
                     local vic_hrp = vic:FindFirstChild("HumanoidRootPart")
                     if vic_hrp then
-                        -- Teleport za ofiarę
                         h.CFrame = vic_hrp.CFrame * CFrame.new(0, 0, 5)
-                        
-                        -- Atak
                         local now = tick()
-                        if now - FtF.Config.lastSwing > SWING_CD and (vic_hrp.Position - h.Position).Magnitude < 25 then
-                            -- Różne metody ataku
+                        if now - FtF.Config.lastSwing > SWING_CD and (vic_hrp.Position - h.Position).Magnitude < 20 then
                             fire_remote("Input", "Swing", true)
                             fire_remote("SwingHammer")
                             fire_remote("Attack")
-                            task.wait(0.1)
+                            task.wait(0.08)
                             fire_remote("Input", "Swing", false)
-                            
-                            -- Dodatkowo spróbuj uderzyć przez TouchInterest
-                            local hammer = lp.Character:FindFirstChild("Hammer") or lp.Backpack:FindFirstChild("Hammer")
-                            if hammer and vic.Character then
-                                for _, part in ipairs(vic.Character:GetDescendants()) do
-                                    if part:IsA("BasePart") then
-                                        firetouchinterest(hammer.Handle, part, 0)
-                                        task.wait(0.05)
-                                        firetouchinterest(hammer.Handle, part, 1)
-                                    end
-                                end
-                            end
-                            
                             FtF.Config.lastSwing = now
                         end
                     end
@@ -283,7 +232,6 @@ function FtF.StartAutomation()
     end)
 end
 
--- Initialize FtF module
 function FtF.Initialize()
     FtF.UpdateESP()
     FtF.StartAutomation()
