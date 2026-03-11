@@ -215,5 +215,5 @@ tab_scripts:CreateButton({
 })
 tab_scripts:CreateButton({
     Name     = "SimplySpy (Remote Spy)",
-    Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Klinac/scripts/main/utopia_spy.lua", true))() end,
+    Callback = function() loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/78n/SimpleSpy/main/SimpleSpyBeta.lua"))() end,
     })
