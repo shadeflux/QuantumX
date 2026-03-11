@@ -8,10 +8,46 @@ local TeleportService = game:GetService("TeleportService")
 local lp = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
--- Load the FtF module (dostosuj URL do swojego repozytorium!)
-local FtF = loadstring(game:HttpGet("https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"))()
+-- ===== LOAD FtF MODULE =====
+local FtF
+local moduleUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/FleeTheFacility.lua"
 
--- Global config
+local success, moduleSrc = pcall(function()
+    return game:HttpGet(moduleUrl)
+end)
+
+if not success or not moduleSrc then
+    Rayfield:Notify({
+        Title = "❌ Błąd ładowania",
+        Content = "Nie można pobrać modułu gry. Sprawdź URL.",
+        Duration = 10
+    })
+    error("Failed to download FleeTheFacility module")
+end
+
+local moduleFunc, compileErr = loadstring(moduleSrc)
+if not moduleFunc then
+    Rayfield:Notify({
+        Title = "❌ Błąd kompilacji",
+        Content = "Moduł gry uszkodzony.",
+        Duration = 10
+    })
+    error("Failed to compile FleeTheFacility module: " .. tostring(compileErr))
+end
+
+local moduleOk, moduleResult = pcall(moduleFunc)
+if not moduleOk then
+    Rayfield:Notify({
+        Title = "❌ Błąd inicjalizacji",
+        Content = "Moduł gry nie chce działać.",
+        Duration = 10
+    })
+    error("Failed to initialize FleeTheFacility module: " .. tostring(moduleResult))
+end
+
+FtF = moduleResult
+
+-- ===== GLOBAL CONFIG =====
 getgenv().Config = {
     speed     = false,
     speedVal  = 16,
@@ -21,7 +57,26 @@ getgenv().Config = {
     noPcError = false,
 }
 
--- Core loops (speed, jump, noclip, no pc error)
+-- ===== NO PC ERROR (POPRAWIONY) =====
+task.spawn(function()
+    while task.wait(0.05) do  -- Szybciej, żeby na pewno działało
+        if getgenv().Config.noPcError then
+            pcall(function()
+                local vu = game:GetService("VirtualUser")
+                vu:CaptureController()
+                vu:ClickButton1(Vector2.new())
+                
+                -- Dodatkowa metoda na "No PC Error"
+                local mouse = lp:GetMouse()
+                if mouse then
+                    vu:ClickButton1(Vector2.new(mouse.X, mouse.Y))
+                end
+            end)
+        end
+    end
+end)
+
+-- ===== SPEED, JUMP, NOCLIP =====
 RunService.Stepped:Connect(function()
     local c = lp.Character
     if c then
@@ -44,22 +99,10 @@ RunService.Stepped:Connect(function()
     end
 end)
 
-task.spawn(function()
-    while task.wait(0.1) do
-        if getgenv().Config.noPcError then
-            pcall(function()
-                local vu = game:GetService("VirtualUser")
-                vu:CaptureController()
-                vu:ClickButton1(Vector2.new())
-            end)
-        end
-    end
-end)
-
--- Initialize FtF module (uruchamia ESP i automaty)
+-- ===== INITIALIZE FtF =====
 FtF.Initialize()
 
--- Create main window
+-- ===== CREATE WINDOW =====
 local win = Rayfield:CreateWindow({
     Name            = "Quantum X | Flee The Facility",
     LoadingTitle    = "Quantum X",
@@ -68,7 +111,7 @@ local win = Rayfield:CreateWindow({
     Size            = UDim2.new(0, 500, 0, 440),
 })
 
--- FtF Tab (korzysta z configu modułu)
+-- ===== FtF TAB =====
 local tab_ftf = win:CreateTab("FtF", 4483362458)
 
 tab_ftf:CreateSection("Survivor")
@@ -112,7 +155,7 @@ tab_ftf:CreateToggle({
     Callback     = function(v) FtF.Config.espDoor = v end,
 })
 
--- Player Tab
+-- ===== PLAYER TAB =====
 local tab_player = win:CreateTab("Player", 4483362458)
 
 tab_player:CreateSection("Movement")
@@ -153,7 +196,7 @@ tab_player:CreateToggle({
     Callback     = function(v) getgenv().Config.noPcError = v end,
 })
 
--- Server Tab
+-- ===== SERVER TAB =====
 local tab_server = win:CreateTab("Server", 4483362458)
 tab_server:CreateButton({
     Name     = "Rejoin",
@@ -168,7 +211,7 @@ tab_server:CreateButton({
     Callback = function() Rayfield:Destroy(); getgenv().qx_loaded = false end,
 })
 
--- Scripts Tab
+-- ===== SCRIPTS TAB (z SimplySpy) =====
 local tab_scripts = win:CreateTab("Scripts", 4483362458)
 tab_scripts:CreateButton({
     Name     = "Infinite Yield",
@@ -177,4 +220,15 @@ tab_scripts:CreateButton({
 tab_scripts:CreateButton({
     Name     = "Dex Explorer",
     Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))() end,
+})
+tab_scripts:CreateButton({
+    Name     = "SimplySpy (Remote Spy)",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/SimplySpy/SimplySpy/main/SimplySpy.lua"))()
+        Rayfield:Notify({
+            Title = "SimplySpy",
+            Content = "Loaded! Check console for remote logs.",
+            Duration = 5
+        })
+    end,
 })
