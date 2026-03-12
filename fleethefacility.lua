@@ -50,48 +50,6 @@ local function fire_remote(...)
     end
 end
 
--- Auto computer functions
-local function do_auto_computer(computer_part)
-    if not computer_part then return end
-    local event = computer_part:FindFirstChild("Event")
-    if not event then
-        for _, child in ipairs(computer_part:GetDescendants()) do
-            if child.Name == "Event" and child:IsA("BindableEvent") then
-                event = child
-                break
-            end
-        end
-    end
-    if event then
-        fire_remote("Input", "Trigger", true, event)
-        task.wait(0.1)
-        fire_remote("SetPlayerMinigameResult", true)
-        task.wait(0.1)
-        fire_remote("Input", "Action", true)
-        task.wait(0.1)
-        fire_remote("Input", "Action", false)
-        return true
-    end
-    return false
-end
-
-local function find_computer_with_trigger3(computer_model)
-    if not computer_model then return nil end
-    local trigger = computer_model:FindFirstChild("ComputerTrigger3")
-    if trigger then return trigger end
-    for _, child in ipairs(computer_model:GetDescendants()) do
-        if child.Name == "ComputerTrigger3" then
-            return child
-        end
-    end
-    for _, child in ipairs(computer_model:GetDescendants()) do
-        if child.Name:find("ComputerTrigger") then
-            return child
-        end
-    end
-    return nil
-end
-
 local function set_esp(inst, fill_color, enabled)
     if not inst then return end
     local h = inst:FindFirstChild("_qx_esp")
@@ -217,7 +175,7 @@ function FtF.StartAutomation()
                 local beast_char = get_beast_char()
                 local beast_pos = beast_char and beast_char:FindFirstChild("HumanoidRootPart") and beast_char.HumanoidRootPart.Position
 
-                local target, t_part, trigger
+                local target, t_part
 
                 if FtF.Config.autoTube then
                     local t = get_nearest_tube()
@@ -229,10 +187,7 @@ function FtF.StartAutomation()
 
                 if not target and FtF.Config.autoComputer then
                     target = get_nearest_model("ComputerTable")
-                    if target then
-                        t_part = target:FindFirstChildWhichIsA("BasePart")
-                        trigger = find_computer_with_trigger3(target)
-                    end
+                    t_part = target and target:FindFirstChildWhichIsA("BasePart")
                 end
 
                 if not target and FtF.Config.autoDoor then
@@ -248,11 +203,10 @@ function FtF.StartAutomation()
                         h.CFrame = CFrame.new(h.Position.X, FtF.Config.evadeSafeY, h.Position.Z)
                     else
                         h.CFrame = t_part.CFrame * CFrame.new(0, 2, 4)
-                        
-                        if FtF.Config.autoComputer and trigger then
-                            do_auto_computer(trigger)
+                        if FtF.Config.autoComputer then
+                            fire_remote("Input", "Action", true)
+                            fire_remote("SetPlayerStatus", 1)
                         end
-                        
                         if FtF.Config.autoTube then
                             fire_remote("StartTubeMinigame")
                         end
