@@ -41,6 +41,7 @@ local function get_is_beast()
     return c and (c:FindFirstChild("Hammer") or (lp.Backpack and lp.Backpack:FindFirstChild("Hammer")))
 end
 
+-- Jedyne miejsce gdzie używamy '...' – to jest poprawne
 local function fire_remote(...)
     local r = ReplicatedStorage:FindFirstChild("RemoteEvent")
     if r then
@@ -50,14 +51,12 @@ local function fire_remote(...)
     end
 end
 
--- ===== AUTO COMPUTER - POPRAWIONY =====
+-- Funkcja do auto computer z triggerem 3
 local function do_auto_computer(computer_part)
     if not computer_part then return end
     
-    -- Znajdź Event w triggerze
     local event = computer_part:FindFirstChild("Event")
     if not event then
-        -- Szukaj głębiej
         for _, child in ipairs(computer_part:GetDescendants()) do
             if child.Name == "Event" and child:IsA("BindableEvent") then
                 event = child
@@ -67,7 +66,6 @@ local function do_auto_computer(computer_part)
     end
     
     if event then
-        -- Sekwencja auto computer (z twojego przykładu)
         fire_remote("Input", "Trigger", true, event)
         task.wait(0.1)
         fire_remote("SetPlayerMinigameResult", true)
@@ -80,30 +78,23 @@ local function do_auto_computer(computer_part)
     return false
 end
 
--- Funkcja do znalezienia komputera z triggerem 3
 local function find_computer_with_trigger3(computer_model)
     if not computer_model then return nil end
     
-    -- Szukaj ComputerTrigger3
     local trigger = computer_model:FindFirstChild("ComputerTrigger3")
-    if trigger then
-        return trigger
-    end
+    if trigger then return trigger end
     
-    -- Szukaj w descendantach
     for _, child in ipairs(computer_model:GetDescendants()) do
         if child.Name == "ComputerTrigger3" then
             return child
         end
     end
     
-    -- Jeśli nie ma trigger3, weź pierwszy lepszy trigger
     for _, child in ipairs(computer_model:GetDescendants()) do
         if child.Name:find("ComputerTrigger") then
             return child
         end
     end
-    
     return nil
 end
 
@@ -197,7 +188,6 @@ end
 function FtF.UpdateESP()
     task.spawn(function()
         while task.wait(0.25) do
-            -- Player ESP
             for _, p in ipairs(Players:GetPlayers()) do
                 if p ~= lp and p.Character then
                     local is_b = p.Character:FindFirstChild("Hammer") or (p.Backpack and p.Backpack:FindFirstChild("Hammer"))
@@ -209,7 +199,6 @@ function FtF.UpdateESP()
                 end
             end
 
-            -- Computer ESP
             for _, v in ipairs(workspace:GetDescendants()) do
                 if v:IsA("Model") then
                     if v.Name == "ComputerTable" then
@@ -230,7 +219,6 @@ function FtF.StartAutomation()
             local h = get_hrp()
             if not h then continue end
 
-            -- Auto Computer/Door/Tube
             if FtF.Config.autoComputer or FtF.Config.autoDoor or FtF.Config.autoTube then
                 local beast_char = get_beast_char()
                 local beast_pos = beast_char and beast_char:FindFirstChild("HumanoidRootPart") and beast_char.HumanoidRootPart.Position
@@ -263,18 +251,14 @@ function FtF.StartAutomation()
                     local b_near_tgt = beast_pos and (beast_pos - t_part.Position).Magnitude < FtF.Config.evadeRange
 
                     if b_near_me or b_near_tgt then
-                        -- Evade mode - go to safe height
                         h.CFrame = CFrame.new(h.Position.X, FtF.Config.evadeSafeY, h.Position.Z)
                     else
-                        -- Teleport do obiektu
                         h.CFrame = t_part.CFrame * CFrame.new(0, 2, 4)
                         
-                        -- Auto Computer z triggerem 3
                         if FtF.Config.autoComputer and trigger then
                             do_auto_computer(trigger)
                         end
                         
-                        -- Auto Tube
                         if FtF.Config.autoTube then
                             fire_remote("StartTubeMinigame")
                         end
@@ -282,7 +266,6 @@ function FtF.StartAutomation()
                 end
             end
 
-            -- Auto Capture for Beast
             if FtF.Config.autoCapture and get_is_beast() then
                 local vic = get_nearest_player()
                 if vic then
@@ -305,7 +288,6 @@ function FtF.StartAutomation()
     end)
 end
 
--- Initialize FtF module
 function FtF.Initialize()
     FtF.UpdateESP()
     FtF.StartAutomation()
