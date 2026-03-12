@@ -9,7 +9,9 @@ local lp = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 -- ===== LOAD FtF MODULE =====
-local moduleUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/main/fleethefacility.lua"
+-- TEN URL MUSI WSKAZYWAĆ NA TWÓJ PLIK fleethefacility.lua!
+local moduleUrl = "https://raw.githubusercontent.com/shadeflux/QuantumX/refs/heads/main/fleethefacility.lua"
+
 local success, moduleSrc = pcall(function()
     return game:HttpGet(moduleUrl)
 end)
@@ -215,5 +217,12 @@ tab_scripts:CreateButton({
 })
 tab_scripts:CreateButton({
     Name     = "SimplySpy (Remote Spy)",
-    Callback = function() loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/78n/SimpleSpy/main/SimpleSpyBeta.lua"))() end,
-    })
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/SimplySpy/SimplySpy/main/SimplySpy.lua"))()
+        Rayfield:Notify({
+            Title = "SimplySpy",
+            Content = "Loaded! Check console for remote logs.",
+            Duration = 5
+        })
+    end,
+})
