@@ -1,7 +1,6 @@
 -- [[ QUANTUM X | FLEE THE FACILITY MODULE ]]
 local FtF = {}
 
--- Configuration
 FtF.Config = {
     autoComputer = false,
     autoTube     = false,
@@ -21,7 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local lp = Players.LocalPlayer
 
--- Utility functions
+-- Private helper functions
 local function get_char()
     return lp.Character
 end
@@ -42,16 +41,13 @@ local function get_is_beast()
 end
 
 local function fire_remote(...)
-    local r = ReplicatedStorage:FindFirstChild("RemoteEvent")
+    local r = ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent")
     if r then
-        pcall(function()
-            r:FireServer(...)
-        end)
+        r:FireServer(...)
     end
 end
 
 local function set_esp(inst, fill_color, enabled)
-    if not inst then return end
     local h = inst:FindFirstChild("_qx_esp")
     if enabled then
         if not h then
@@ -64,13 +60,13 @@ local function set_esp(inst, fill_color, enabled)
         end
         h.FillColor = fill_color
     elseif h then
-        pcall(function() h:Destroy() end)
+        h:Destroy()
     end
 end
 
 local function get_nearest_model(name)
     local h = get_hrp()
-    if not h then return nil end
+    if not h then return end
     local best, best_dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and v.Name == name then
@@ -89,7 +85,7 @@ end
 
 local function get_nearest_player()
     local h = get_hrp()
-    if not h then return nil end
+    if not h then return end
     local best, best_dist = nil, math.huge
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= lp and p.Character then
@@ -108,7 +104,7 @@ end
 
 local function get_nearest_tube()
     local h = get_hrp()
-    if not h then return nil end
+    if not h then return end
     local best, best_dist = nil, math.huge
     for _, v in ipairs(workspace:GetDescendants()) do
         if v:IsA("Model") and (v.Name == "Tube" or v.Name == "CryoTube") then
@@ -133,10 +129,8 @@ local function get_beast_char()
             end
         end
     end
-    return nil
 end
 
--- ESP update loop
 function FtF.UpdateESP()
     task.spawn(function()
         while task.wait(0.25) do
@@ -164,7 +158,6 @@ function FtF.UpdateESP()
     end)
 end
 
--- Automation loop
 function FtF.StartAutomation()
     task.spawn(function()
         while task.wait(0.25) do
