@@ -41,7 +41,6 @@ local function get_is_beast()
     return c and (c:FindFirstChild("Hammer") or (lp.Backpack and lp.Backpack:FindFirstChild("Hammer")))
 end
 
--- Jedyne miejsce gdzie używamy '...' – to jest poprawne
 local function fire_remote(...)
     local r = ReplicatedStorage:FindFirstChild("RemoteEvent")
     if r then
@@ -51,10 +50,9 @@ local function fire_remote(...)
     end
 end
 
--- Funkcja do auto computer z triggerem 3
+-- Auto computer functions
 local function do_auto_computer(computer_part)
     if not computer_part then return end
-    
     local event = computer_part:FindFirstChild("Event")
     if not event then
         for _, child in ipairs(computer_part:GetDescendants()) do
@@ -64,7 +62,6 @@ local function do_auto_computer(computer_part)
             end
         end
     end
-    
     if event then
         fire_remote("Input", "Trigger", true, event)
         task.wait(0.1)
@@ -80,16 +77,13 @@ end
 
 local function find_computer_with_trigger3(computer_model)
     if not computer_model then return nil end
-    
     local trigger = computer_model:FindFirstChild("ComputerTrigger3")
     if trigger then return trigger end
-    
     for _, child in ipairs(computer_model:GetDescendants()) do
         if child.Name == "ComputerTrigger3" then
             return child
         end
     end
-    
     for _, child in ipairs(computer_model:GetDescendants()) do
         if child.Name:find("ComputerTrigger") then
             return child
